@@ -1,4 +1,4 @@
-# UAE Pass Technical Workflow
+# Technical Workflow - UAEPass Authenticator
 
 **The following flow chart includes the control flow, which illustrates how authenticator sends a valid authorize request
 according to the particular environment and the query parameters selection.**

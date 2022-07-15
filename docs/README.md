@@ -10,3 +10,7 @@ The following diagram illustrates the authentication flow of the UAEPass federat
 ## Getting started
 To get started with the authenticator, go to [Configuring the UAEPass Authenticator](config.md). 
 Once you have completed your configurations, you can authenticate users using the UAEPass Authenticator.
+
+## Technical workflow
+To undesratnd the underlying flow of UAEPass Authenticator, go to 
+[the Technical workflow of UAEPass Authenticator](technicalworkflow.md)
