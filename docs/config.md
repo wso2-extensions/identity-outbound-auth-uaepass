@@ -34,7 +34,7 @@ The [documentation](https://docs.uaepass.ae/guides/authentication/web-applicatio
 include information regarding above endpoints.
 
 Once Identity Server restarts, the bellow configurations will be getting reflected into `application-authentication.xml` 
-file located in the `<IS-HOME>/repository/conf/identity directory` from the above toml file 
+file located in the `<IS-HOME>/repository/conf/identity` directory from the above toml file 
 
 ```xml
    <AuthenticatorConfig name="UAEPassAuthenticator" enabled="true">
