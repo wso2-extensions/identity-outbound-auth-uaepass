@@ -9,6 +9,7 @@ according to the particular environment and the query parameters selection.**
 1. Login flow
 
 ![alt text](images/loginflow.png)
+
 2. Logout flow
 
 ![alt text](images/logoutflow.png)

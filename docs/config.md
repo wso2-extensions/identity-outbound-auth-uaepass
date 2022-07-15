@@ -15,7 +15,7 @@ code for both staging and production. However, users can update these default en
 `deployment.toml` file as follows with the necessary parameters. If a user prefers to add the following configurations, 
 the endpoint's default configurations may be overridden.
 
-```
+```toml
 [[authentication.custom_authenticator]]
 name="UAEPassAuthenticator"
 enable=true
@@ -36,7 +36,7 @@ include information regarding above endpoints.
 Once Identity Server restarts, the bellow configurations will be getting reflected into `application-authentication.xml` 
 file located in the `<IS-HOME>/repository/conf/identity directory` from the above toml file 
 
-```
+```xml
    <AuthenticatorConfig name="UAEPassAuthenticator" enabled="true">
       <Parameter name="UAEPassSTGAuthzEndpoint">https://stg-id.uaepass.ae/idshub/authorize</Parameter>
       <Parameter name="UAEPassSTGUserInfoEndpoint">https://stg-id.uaepass.ae/idshub/userinfo</Parameter>
