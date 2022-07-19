@@ -1,0 +1,76 @@
+<!--
+  ~ Copyright (c) 2022, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+  ~
+  ~ WSO2 Inc. licenses this file to you under the Apache License,
+  ~ Version 2.0 (the "License"); you may not use this file except
+  ~ in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied.  See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
+  -->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="CRLF_INJECTION_LOGS" />
+    </Match>
+    <Match>
+        <Bug pattern="FORMAT_STRING_MANIPULATION" />
+    </Match>
+    <Match>
+        <Bug pattern="JAXRS_ENDPOINT" />
+    </Match>
+    <Match>
+        <Bug pattern="IMPROPER_UNICODE" />
+    </Match>
+    <FindBugsFilter>
+        <Match>
+            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Bug pattern="UNVALIDATED_REDIRECT" />
+        </Match>
+    </FindBugsFilter>
+    <FindBugsFilter>
+        <Match>
+            <Or>
+                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAE" />
+                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAEPassPropertyConstants" />
+                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$Endpoints" />
+            </Or>
+            <Bug pattern="SIC_INNER_SHOULD_BE_STATIC" />
+        </Match>
+    </FindBugsFilter>
+    <FindBugsFilter>
+        <Match>
+            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAEPassRuntimeConstants" />
+            <Bug pattern="MS_PKGPROTECT" />
+        </Match>
+    </FindBugsFilter>
+    <FindBugsFilter>
+        <Match>
+            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Bug pattern="URLCONNECTION_SSRF_FD" />
+        </Match>
+    </FindBugsFilter>
+    <FindBugsFilter>
+        <Match>
+            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Or>
+                <Method name="getIdTokenClaims" />
+                <Method name="sendUserInfoRequest" />
+            </Or>
+            <Bug pattern="DM_DEFAULT_ENCODING" />
+        </Match>
+    </FindBugsFilter>
+    <FindBugsFilter>
+        <Match>
+            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Method name="sendUserInfoRequest" />
+            <Bug pattern="OS_OPEN_STREAM" />
+        </Match>
+    </FindBugsFilter>
+</FindBugsFilter>

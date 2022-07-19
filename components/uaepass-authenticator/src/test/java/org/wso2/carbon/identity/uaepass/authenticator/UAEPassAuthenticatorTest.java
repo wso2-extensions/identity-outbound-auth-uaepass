@@ -53,6 +53,7 @@ import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassAuthnFailedException;
 import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassUserInfoFailedException;
 import org.wso2.carbon.identity.uaepass.authenticator.internal.UAEPassDataHolder;
 import org.wso2.carbon.user.api.RealmConfiguration;
@@ -374,7 +375,7 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     }
 
     @Test
-    public void testAdditionalQueryParamSeperation() throws UnsupportedEncodingException {
+    public void testAdditionalQueryParamSeperation() throws UAEPassAuthnFailedException {
 
         String url = "https://stg-ids.uaepass.ae/oauth2/authorize";
         assertEquals(uaePassAuthenticator.processAdditionalQueryParamSeperation(authenticatorProperties, url),
@@ -491,7 +492,7 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         assertNotNull(uaePassAuthenticator.getOAuthResponse(mockOAuthClient, mockOAuthClientRequest));
     }
 
-    @Test(expectedExceptions = OAuthSystemException.class)
+    @Test(expectedExceptions = UAEPassAuthnFailedException.class)
     public void testGetOauthResponseWithExceptions() throws OAuthSystemException,
             OAuthProblemException, AuthenticationFailedException {
 
@@ -501,7 +502,7 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         uaePassAuthenticator.getOAuthResponse(oAuthClient, oAuthClientRequest);
     }
 
-    @Test(expectedExceptions = OAuthProblemException.class)
+    @Test(expectedExceptions = UAEPassAuthnFailedException.class)
     public void testGetOauthResponseWithOAuthProblemExceptions() throws OAuthSystemException,
             OAuthProblemException, AuthenticationFailedException {
 

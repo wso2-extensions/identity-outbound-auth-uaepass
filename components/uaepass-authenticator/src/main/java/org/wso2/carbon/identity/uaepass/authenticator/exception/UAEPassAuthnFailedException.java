@@ -28,11 +28,6 @@ public class UAEPassAuthnFailedException extends AuthenticationFailedException {
         super(message);
     }
 
-    public UAEPassAuthnFailedException(String message, String e) {
-
-        super(message, e);
-    }
-
     public UAEPassAuthnFailedException(String message, Throwable cause) {
 
         super(message, cause);
