@@ -23,7 +23,7 @@
 
     <test name="uaepass-connect-authenticator-tests" preserve-order="true" parallel="false">
         <classes>
-            <class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorTest"/>
+            <class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorTest"/>
         </classes>
     </test>
 </suite>

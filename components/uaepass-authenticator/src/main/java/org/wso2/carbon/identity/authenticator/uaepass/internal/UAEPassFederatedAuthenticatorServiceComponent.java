@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator.internal;
+package org.wso2.carbon.identity.authenticator.uaepass.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,7 +30,7 @@ import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
-import org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator;
+import org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticator;
 import org.wso2.carbon.user.core.service.RealmService;
 
 @Component(name = "uae.pass.federated.authenticator", immediate = true)

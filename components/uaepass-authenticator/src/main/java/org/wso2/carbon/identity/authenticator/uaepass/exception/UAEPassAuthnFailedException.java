@@ -17,15 +17,18 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator.exception;
+package org.wso2.carbon.identity.authenticator.uaepass.exception;
 
-public class UAEPassUserInfoFailedException extends Exception {
-    public UAEPassUserInfoFailedException(String message) {
+import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+
+public class UAEPassAuthnFailedException extends AuthenticationFailedException {
+
+    public UAEPassAuthnFailedException(String message) {
 
         super(message);
     }
 
-    public UAEPassUserInfoFailedException(String message, Throwable cause) {
+    public UAEPassAuthnFailedException(String message, Throwable cause) {
 
         super(message, cause);
     }

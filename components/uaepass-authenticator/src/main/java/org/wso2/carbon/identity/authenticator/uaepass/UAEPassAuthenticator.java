@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator;
+package org.wso2.carbon.identity.authenticator.uaepass;
 
 import com.nimbusds.jose.util.JSONObjectUtils;
 import net.minidev.json.JSONArray;
@@ -44,18 +44,15 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
-import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.identity.base.IdentityConstants;
-import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
-import org.wso2.carbon.identity.claim.metadata.mgt.model.ExternalClaim;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassAuthnFailedException;
-import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassUserInfoFailedException;
-import org.wso2.carbon.identity.uaepass.authenticator.internal.UAEPassDataHolder;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -279,15 +276,11 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             throw new AuthenticationFailedException("Authentication process failed." +
                     "Unable to process additional query parameters.", e);
         } catch (IOException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Authorization request building failed.");
-            }
+            LOG.error("Authorization request building failed.");
             throw new AuthenticationFailedException("Unable to pick correct env or a problem occurred in additional "
                     + "query params when generating the authorize request.", e);
         } catch (OAuthSystemException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Unable to build the request with compulsory query parameters.");
-            }
+            LOG.error("Unable to build the request with compulsory query parameters.");
             throw new AuthenticationFailedException("Authentication process failed." +
                     "Unable to build the request with compulsory query parameters.", e);
         }
@@ -335,7 +328,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 jsonClaimMap = getUserInfoUserAttributes(oAuthResponse, context);
             }
 
-            String authenticatedUserId = getAuthenticatedUserId(context, jsonClaimMap);
+            String authenticatedUserId = getAuthenticatedUserId(jsonClaimMap);
             String attributeSeparator = getMultiAttributeSeparator(context, authenticatedUserId);
 
             jsonClaimMap.entrySet().stream().filter(entry -> !ArrayUtils.contains(UAEPassAuthenticatorConstants.
@@ -563,48 +556,21 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Returns the user context of authenticated user.
-     *
-     * @param oidcClaims
-     * @return String
-     */
-    public String getAuthenticatedUser(Map<String, Object> oidcClaims) {
-
-        return (String) oidcClaims.get(UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.SUB);
-    }
-
-    /**
      * Returns the user id of the authenticated user.
      *
-     * @param context                          The Authentication context received by authenticator.
-     * @param userClaims                       The Map object with user claims returns from buildJSON.
-     * @return String                          The ID of the authenticated user from UAEPass.
-     * @throws AuthenticationFailedException
+     * @param userClaims                      The Map object with user claims returns from buildJSON.
+     * @return String                         The ID of the authenticated user from UAEPass.
+     * @throws AuthenticationFailedException  Throws an AuthenticationFailedException exception to
+     *                                        processAuthenticationResponse.
      */
-    public String getAuthenticatedUserId(AuthenticationContext context, Map<String, Object> userClaims)
+    public String getAuthenticatedUserId(Map<String, Object> userClaims)
             throws AuthenticationFailedException {
 
         String authenticatedUserId;
-        if (isUserIdFoundAmongClaims(context)) {
-            authenticatedUserId = getSubjectFromUserIDClaimURI(context, userClaims);
-            if (StringUtils.isNotBlank(authenticatedUserId)) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Authenticated user id: " + authenticatedUserId + " was found among id_token claims.");
-                }
-            } else {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Subject claim could not be found amongst id_token claims. Defaulting to the 'sub' " +
-                            "attribute in id_token as authenticated user id.");
-                }
-                authenticatedUserId = getAuthenticatedUser(userClaims);
-            }
-        } else {
-            authenticatedUserId = getAuthenticatedUser(userClaims);
+        authenticatedUserId = (String) userClaims.get(UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.SUB);
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Authenticated user id: " + authenticatedUserId + " retrieved from the 'sub' claim.");
             }
-        }
-
         if (StringUtils.isBlank(authenticatedUserId)) {
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP.getCode(),
@@ -616,125 +582,11 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Checks whether the valid OIDC claim available in the OIDC claims in WSO2 Identity Server.
+     * Map the non-user claim values according to the attribute separator.
      *
-     * @param context   The Authentication context received by authenticator.
-     * @return Boolean
-     */
-    public boolean isUserIdFoundAmongClaims(AuthenticationContext context) {
-
-        return Boolean.parseBoolean(context.getAuthenticatorProperties().get(IdentityApplicationConstants.
-                Authenticator.OIDC.IS_USER_ID_IN_CLAIMS));
-    }
-
-    /**
-     * @param context                           The Authentication context received by authenticator.
-     * @param userClaims                        The Map object with user claims returns from buildJSON.
-     * @return String
-     * @throws AuthenticationFailedException
-     */
-    public String getSubjectFromUserIDClaimURI(AuthenticationContext context, Map<String, Object> userClaims)
-            throws AuthenticationFailedException {
-
-        boolean useLocalClaimDialect = context.getExternalIdP().useDefaultLocalIdpDialect();
-        String userIdClaimUri = context.getExternalIdP().getUserIdClaimUri();
-        String spTenantDomain = context.getTenantDomain();
-
-        try {
-            String userIdClaimUriInOIDCDialect = null;
-            if (useLocalClaimDialect) {
-                if (StringUtils.isNotBlank(userIdClaimUri)) {
-                    userIdClaimUriInOIDCDialect = getUserIdClaimUriInOIDCDialect(userIdClaimUri, spTenantDomain);
-                } else {
-                    if (LOG.isDebugEnabled()) {
-                        String idpName = context.getExternalIdP().getIdPName();
-                        LOG.debug("User ID Claim URI is not configured for IDP: " + idpName + ". " +
-                                "Cannot retrieve subject using user id claim URI.");
-                    }
-                }
-            } else {
-                ClaimMapping[] claimMappings = context.getExternalIdP().getClaimMappings();
-                // Try to find the userIdClaimUri within the claimMappings.
-                if (!ArrayUtils.isEmpty(claimMappings)) {
-                    for (ClaimMapping claimMapping : claimMappings) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Evaluating " + claimMapping.getRemoteClaim().getClaimUri() + " against "
-                                    + userIdClaimUri);
-                        }
-                        if (StringUtils.equals(claimMapping.getRemoteClaim().getClaimUri(), userIdClaimUri)) {
-                            // Get the subject claim in OIDC dialect.
-                            String userIdClaimUriInLocalDialect = claimMapping.getLocalClaim().getClaimUri();
-                            userIdClaimUriInOIDCDialect = getUserIdClaimUriInOIDCDialect(userIdClaimUriInLocalDialect,
-                                    spTenantDomain);
-                            break;
-                        }
-                    }
-                }
-            }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("using userIdClaimUriInOIDCDialect to get subject from idTokenClaims: "
-                        + userIdClaimUriInOIDCDialect);
-            }
-            Object subject = userClaims.get(userIdClaimUriInOIDCDialect);
-            if (subject instanceof String) {
-                return (String) subject;
-            } else if (subject != null) {
-                LOG.warn("Unable to map subject claim (non-String type): " + subject);
-            }
-        } catch (ClaimMetadataException ex) {
-            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
-                    EXECUTING_CLAIM_TRANSFORMATION_FOR_IDP_FAILED.getCode(),
-                    String.format(UAEPassAuthenticatorConstants.ErrorMessages.
-                                    EXECUTING_CLAIM_TRANSFORMATION_FOR_IDP_FAILED.getMessage(),
-                            context.getExternalIdP().getIdPName()), ex);
-        }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Couldn't find the subject claim among id_token claims for IDP: " +
-                    context.getExternalIdP().getIdPName());
-        }
-        return null;
-    }
-
-    /**
-     * Returns the claim URIs from UAEPass.
-     *
-     * @param userIdClaimInLocalDialect
-     * @param spTenantDomain             Tenant domain name, where the SP has configured.
-     * @return String
-     * @throws ClaimMetadataException
-     */
-    public String getUserIdClaimUriInOIDCDialect(String userIdClaimInLocalDialect, String spTenantDomain)
-            throws ClaimMetadataException {
-
-        List<ExternalClaim> externalClaims = UAEPassDataHolder.
-                getInstance().
-                getClaimMetadataManagementService().
-                getExternalClaims(UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.OIDC_DIALECT, spTenantDomain);
-        String userIdClaimUri = null;
-        ExternalClaim oidcUserIdClaim = null;
-
-        for (ExternalClaim externalClaim : externalClaims) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Evaluating " + userIdClaimInLocalDialect + " against " +
-                        externalClaim.getMappedLocalClaim());
-            }
-            if (userIdClaimInLocalDialect.equals(externalClaim.getMappedLocalClaim())) {
-                oidcUserIdClaim = externalClaim;
-            }
-        }
-        if (oidcUserIdClaim != null) {
-            userIdClaimUri = oidcUserIdClaim.getClaimURI();
-        }
-
-        return userIdClaimUri;
-    }
-
-    /**
-     * Map the claim values according to the attribute separator.
-     *
-     * @param claims
-     * @param entry
-     * @param separator
+     * @param claims     Retrieved JSON claim set from id token / userinfo endpoint of UAEPass.
+     * @param entry      A collective view of JSON claims without aon-User attributes.
+     * @param separator  The attribute separator obtained from getMultiAttributeSeparator method.
      */
     public void buildClaimMappings(Map<ClaimMapping, String> claims, Map.Entry<String, Object> entry,
                                    String separator) {

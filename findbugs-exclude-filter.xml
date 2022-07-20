@@ -30,35 +30,35 @@
     </Match>
     <FindBugsFilter>
         <Match>
-            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticator" />
             <Bug pattern="UNVALIDATED_REDIRECT" />
         </Match>
     </FindBugsFilter>
     <FindBugsFilter>
         <Match>
             <Or>
-                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAE" />
-                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAEPassPropertyConstants" />
-                <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$Endpoints" />
+                <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants$UAE" />
+                <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants$UAEPassPropertyConstants" />
+                <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants$Endpoints" />
             </Or>
             <Bug pattern="SIC_INNER_SHOULD_BE_STATIC" />
         </Match>
     </FindBugsFilter>
     <FindBugsFilter>
         <Match>
-            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticatorConstants$UAEPassRuntimeConstants" />
+            <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants$UAEPassRuntimeConstants" />
             <Bug pattern="MS_PKGPROTECT" />
         </Match>
     </FindBugsFilter>
     <FindBugsFilter>
         <Match>
-            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticator" />
             <Bug pattern="URLCONNECTION_SSRF_FD" />
         </Match>
     </FindBugsFilter>
     <FindBugsFilter>
         <Match>
-            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticator" />
             <Or>
                 <Method name="getIdTokenClaims" />
                 <Method name="sendUserInfoRequest" />
@@ -68,7 +68,7 @@
     </FindBugsFilter>
     <FindBugsFilter>
         <Match>
-            <Class name="org.wso2.carbon.identity.uaepass.authenticator.UAEPassAuthenticator" />
+            <Class name="org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticator" />
             <Method name="sendUserInfoRequest" />
             <Bug pattern="OS_OPEN_STREAM" />
         </Match>

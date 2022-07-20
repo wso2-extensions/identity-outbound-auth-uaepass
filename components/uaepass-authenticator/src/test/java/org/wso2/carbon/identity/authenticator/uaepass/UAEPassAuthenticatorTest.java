@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator;
+package org.wso2.carbon.identity.authenticator.uaepass;
 
 import org.apache.juli.logging.LogFactory;
 import org.apache.oltu.oauth2.client.OAuthClient;
@@ -41,9 +41,7 @@ import org.wso2.carbon.identity.application.authentication.framework.config.mode
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
-import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
-import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.SubProperty;
@@ -53,15 +51,14 @@ import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassAuthnFailedException;
-import org.wso2.carbon.identity.uaepass.authenticator.exception.UAEPassUserInfoFailedException;
-import org.wso2.carbon.identity.uaepass.authenticator.internal.UAEPassDataHolder;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.user.api.RealmConfiguration;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.util.Map;
 import java.util.HashMap;
@@ -637,26 +634,8 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
 
         Map<String, Object> idTokenClaims = new HashMap<>();
         idTokenClaims.put("sub", "5e142ae1-eaa5-45a5-a3c3-cdb6fe46d5cd");
-        when(mockUaePassAuthenticator.isUserIdFoundAmongClaims(mockAuthenticationContext)).thenReturn(true);
-        when(mockUaePassAuthenticator.getSubjectFromUserIDClaimURI(mockAuthenticationContext, idTokenClaims))
-                .thenReturn("5e142ae1-eaa5-45a5-a3c3-cdb6fe46d5cd");
-        when(mockUaePassAuthenticator.getAuthenticatedUser(idTokenClaims))
-                .thenReturn("5e142ae1-eaa5-45a5-a3c3-cdb6fe46d5cd");
-
-        assertEquals(uaePassAuthenticator.getAuthenticatedUserId(mockAuthenticationContext, idTokenClaims),
+        assertEquals(uaePassAuthenticator.getAuthenticatedUserId(idTokenClaims),
                 "5e142ae1-eaa5-45a5-a3c3-cdb6fe46d5cd");
-    }
-
-    @Test(expectedExceptions = NullPointerException.class)
-    public void testGetSubjectFromUserIDClaimURI() throws AuthenticationFailedException, FrameworkException {
-
-        Map<String, Object> idTokenClaims = new HashMap<>();
-        Assert.assertNull(uaePassAuthenticator.getSubjectFromUserIDClaimURI(mockAuthenticationContext, idTokenClaims));
-        mockStatic(FrameworkUtils.class);
-        when(FrameworkUtils.getFederatedSubjectFromClaims(mockAuthenticationContext,
-                uaePassAuthenticator.getClaimDialectURI())).thenReturn("subject");
-        Assert.assertNotNull(uaePassAuthenticator.getSubjectFromUserIDClaimURI
-                (mockAuthenticationContext, idTokenClaims));
     }
 
     @Test

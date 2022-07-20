@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator;
+package org.wso2.carbon.identity.authenticator.uaepass;
 
 public class UAEPassAuthenticatorConstants {
     public enum ErrorMessages {

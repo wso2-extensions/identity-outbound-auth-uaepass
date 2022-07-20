@@ -17,7 +17,7 @@
  *
  */
 
-package org.wso2.carbon.identity.uaepass.authenticator.internal;
+package org.wso2.carbon.identity.authenticator.uaepass.internal;
 
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
 import org.wso2.carbon.user.core.service.RealmService;
