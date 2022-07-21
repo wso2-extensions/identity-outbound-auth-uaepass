@@ -23,11 +23,6 @@ import org.wso2.carbon.identity.application.authentication.framework.exception.A
 
 public class UAEPassAuthnFailedException extends AuthenticationFailedException {
 
-    public UAEPassAuthnFailedException(String message) {
-
-        super(message);
-    }
-
     public UAEPassAuthnFailedException(String message, Throwable cause) {
 
         super(message, cause);

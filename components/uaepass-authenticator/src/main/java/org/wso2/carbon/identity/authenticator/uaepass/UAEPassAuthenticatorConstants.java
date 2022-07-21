@@ -19,6 +19,9 @@
 
 package org.wso2.carbon.identity.authenticator.uaepass;
 
+/**
+ * Includes all the constants variables used by the UAEPass authenticator.
+ */
 public class UAEPassAuthenticatorConstants {
     public enum ErrorMessages {
 

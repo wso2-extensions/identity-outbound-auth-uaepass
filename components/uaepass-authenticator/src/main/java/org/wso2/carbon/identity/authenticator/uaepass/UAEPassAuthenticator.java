@@ -306,9 +306,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
 
             String accessToken = oAuthResponse.getParam(UAEPassAuthenticatorConstants.UAE.ACCESS_TOKEN);
             if (StringUtils.isBlank(accessToken)) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Access token is empty.");
-                }
+                LOG.error("Access token is empty.");
                 throw new AuthenticationFailedException("Access token is empty.");
             }
 
@@ -351,9 +349,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             throw new AuthenticationFailedException("Authentication process failed." +
                     "Unable to build access token request.", e);
         } catch (OAuthProblemException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("OAuth authorize response failure.");
-            }
+            LOG.error("OAuth authorize response failure.");
             throw new AuthenticationFailedException("Authentication process failed.", e);
         }
     }
@@ -377,8 +373,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 Map<String, String> paramMap = new HashMap<>();
                 Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-                String logoutRedirectUri = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
-                paramMap.put(UAEPassAuthenticatorConstants.UAE.REDIRECT_URI, logoutRedirectUri);
+                String logoutRedirectURI = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
+                paramMap.put(UAEPassAuthenticatorConstants.UAE.REDIRECT_URI, logoutRedirectURI);
                 String sessionID = context.getContextIdentifier() + "," + UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE;
                 paramMap.put(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE, sessionID);
 
@@ -388,10 +384,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 logoutUrl = modifyLogoutUrl(logoutUrl);
                 response.sendRedirect(logoutUrl);
 
-            } catch (IOException e) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.error("Error in initiate logout URI build.", e);
-                }
+            } catch (IllegalArgumentException | IOException e) {
+                LOG.error("Error in initiate logout URI build.");
                 String idpName = context.getExternalIdP().getName();
                 String tenantDomain = context.getTenantDomain();
                 throw new LogoutFailedException("Error occurred while initiating the logout request to IdP: " + idpName
@@ -502,9 +496,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         } catch (UAEPassUserInfoFailedException e) {
             throw new UAEPassUserInfoFailedException("Unable to retrieve claims from user info.", e);
         } catch (ParseException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Error occurred while parsing user info payload by UAEPass.");
-            }
+            LOG.error("Error occurred while parsing user info payload by UAEPass.");
             throw new UAEPassUserInfoFailedException("Error occurred while parsing user info payload by UAEPass.", e);
         }
 
@@ -718,9 +710,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             throw new UAEPassAuthnFailedException("Exception while building access token request "
                     + "with the request body", e);
         } catch (URLBuilderException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Unable to identify common-auth URL on browser");
-            }
+            LOG.error("Unable to identify common-auth URL on browser.");
             throw new UAEPassAuthnFailedException("Error occurred while extracting the absolute public " +
                     "URL from browser.", e);
         }
@@ -743,9 +733,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         try {
             oAuthResponse = oAuthClient.accessToken(accessRequest);
         } catch (OAuthSystemException | OAuthProblemException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("UAEPass OAuth client response failed.");
-            }
+            LOG.error("UAEPass OAuth client response failed.");
             throw new UAEPassAuthnFailedException("Unable to return OAuth client response.", e);
         }
 
@@ -778,12 +766,12 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * This method is used to modify commonAuth logout URL, where ever relevant to WSO2 Identity Server.
      * This method will append the state parameter to redirect_uri's value as a query string.
      *
-     * @param logOutUri  Logout URI with 02 query parameters (state and logout redirect_uri)
+     * @param logOutURI  Logout URI with 02 query parameters (state and logout redirect_uri)
      * @return String    Logout URI with 01 query parameter (redirect_uri)
      */
-    public String modifyLogoutUrl(String logOutUri) {
+    public String modifyLogoutUrl(String logOutURI) {
 
-        return logOutUri.replace('&', '?');
+        return logOutURI.replace('&', '?');
     }
 
     /**
