@@ -85,10 +85,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     private static final Log LOG = LogFactory.getLog(UAEPassAuthenticator.class);
 
     /**
-     * Checks whether the request and response can handle by the authenticator.
+     * Checks whether the request and response can be handled by the authenticator.
      *
-     * @param request   The request that is received by the authenticator.
-     * @return Boolean  Whether the request can be handled by the authenticator.
+     * @param request  The request that is received by the authenticator.
+     * @return Boolean Whether the request can be handled by the authenticator.
      */
     @Override
     public boolean canHandle(HttpServletRequest request) {
@@ -99,7 +99,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Returns the federated IdP component's friendly name.
      *
-     * @return String   The display name of the authenticator.
+     * @return String  The display name of the authenticator.
      */
     @Override
     public String getFriendlyName() {
@@ -110,7 +110,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Returns the federated IdP component name.
      *
-     * @return String   The identifier of the authenticator
+     * @return String  The identifier of the authenticator.
      */
     @Override
     public String getName() {
@@ -122,7 +122,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * Returns the claim dialect URL.
      * Since authenticator supports OIDC, the dialect URL is OIDC dialect.
      *
-     * @return String  The dialect which supposed to map UAEPass claims
+     * @return String  The dialect which is supposed to map UAEPass claims.
      */
     @Override
     public String getClaimDialectURI() {
@@ -135,7 +135,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * This contains the session id, processed by the WSO2 IS.
      *
      * @param request  The request that is received by the authenticator.
-     * @return String  Returns the state parameter value that is carried bt the request.
+     * @return String  Returns the state parameter value that is carried by the request.
      */
     @Override
     public String getContextIdentifier(HttpServletRequest request) {
@@ -144,13 +144,13 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         if (StringUtils.isNotBlank(state)) {
             return state.split(",")[0];
         } else {
-            LOG.error("An unique identifier cannot be issue for both Request and Response. ContextIdentifier is NULL.");
+            LOG.error("A unique identifier cannot be issued for both Request and Response. ContextIdentifier is NULL.");
             return null;
         }
     }
 
     /**
-     * Returns the all user input fields of the authenticator.
+     * Returns all user input fields of the authenticator.
      *
      * @return List<Property>  Returns the federated authenticator properties
      */
@@ -181,7 +181,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         callbackUrl.setDisplayName("Callback URL");
         callbackUrl.setRequired(true);
         callbackUrl.setName(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
-        callbackUrl.setDescription("The callback URL used to partner identity provider credentials.");
+        callbackUrl.setDescription("Enter value corresponding to callback url.");
         callbackUrl.setType(UAEPassAuthenticatorConstants.UAEPassPropertyConstants.TEXTBOX);
         callbackUrl.setDisplayOrder(3);
         configProperties.add(callbackUrl);
@@ -190,7 +190,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         additionalQueryParams.setName(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
         additionalQueryParams.setDisplayName("Additional Query Parameters");
         additionalQueryParams.setRequired(false);
-        additionalQueryParams.setDescription("Add the additional query parameters.");
+        additionalQueryParams.setDescription("Enter the additional query parameters.");
         additionalQueryParams.setType(UAEPassAuthenticatorConstants.UAEPassPropertyConstants.TEXTBOX);
         additionalQueryParams.setDisplayOrder(4);
         configProperties.add(additionalQueryParams);
@@ -221,8 +221,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * application's login page, which is set up on the UAE Pass side, which works as the external Identity Provider.
      *
      * @param request                          The request that is received by the authenticator.
-     * @param response                         Appends the authorized URL once a valid authorized URL built.
-     * @param context                          The Authentication context received by authenticator.
+     * @param response                         Appends the authorized URL once a valid authorized URL is built.
+     * @param context                          The Authentication context received by the authenticator.
      * @throws AuthenticationFailedException   Exception while creating the authorization code
      */
     @Override
@@ -373,15 +373,17 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 Map<String, String> paramMap = new HashMap<>();
                 Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
 
-                String logoutRedirectURI = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
-                paramMap.put(UAEPassAuthenticatorConstants.UAE.REDIRECT_URI, logoutRedirectURI);
+                String callbackURI = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
                 String sessionID = context.getContextIdentifier() + "," + UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE;
                 paramMap.put(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE, sessionID);
 
                 String envUAEPass = getUAEPassEnvironment(context);
-                String logoutUrl = getLogoutUrl(envUAEPass);
-                logoutUrl = FrameworkUtils.buildURLWithQueryParams(logoutUrl, paramMap);
-                logoutUrl = modifyLogoutUrl(logoutUrl);
+                String logoutEndpoint = getLogoutUrl(envUAEPass);
+
+                String redirectURI = FrameworkUtils.buildURLWithQueryParams(callbackURI, paramMap);
+                paramMap.clear();
+                paramMap.put(UAEPassAuthenticatorConstants.UAE.REDIRECT_URI, redirectURI);
+                String logoutUrl = FrameworkUtils.buildURLWithQueryParams(logoutEndpoint, paramMap);
                 response.sendRedirect(logoutUrl);
 
             } catch (IllegalArgumentException | IOException e) {
@@ -397,13 +399,14 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * After successful logout, WSO2 IS returns this response.
+     * After a successful logout, WSO2 IS returns this response.
      * Contains the details about the SP.
      *
      * @param request   The request that is received by the authenticator.
      * @param response  The response that is received to the authenticator.
      * @param context   The Authentication context received by authenticator.
      */
+
     @Override
     protected void processLogoutResponse(HttpServletRequest request, HttpServletResponse response,
                                          AuthenticationContext context) {
@@ -420,7 +423,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * This method is used add additional parameters along with the authorize request.
+     * This method is used to add additional parameters along with the authorize request.
      *
      * @param authenticatorProperties  The user input fields of the authenticator.
      * @param loginPage                Current authorize URL.
@@ -458,9 +461,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             }
             finalAuthzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
         } catch (IllegalArgumentException | UnsupportedEncodingException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Authorize URL creation failed with the additional query parameters issue.");
-            }
+            LOG.error("Authorize URL creation failed due to an issue of additional query parameters.");
             throw new UAEPassAuthnFailedException("Authentication process failed. Unable to set " +
                     "additional query parameters to the authorize request.", e);
         }
@@ -472,7 +473,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * This method is used to retrieve user claims as key value pairs to the Java Map object from user info endpoint.
      *
      * @param oAuthResponse         The response from OAuthClient to authenticator by the UAEPass.
-     *                              (Use to teh get access token)
+     *                              (Use to get the access token.)
      * @param context               The Authentication context received by authenticator.
      * @return Map<String, Object>  Map object of key value pairs of the logged user.
      */
@@ -577,7 +578,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * Map the non-user claim values according to the attribute separator.
      *
      * @param claims     Retrieved JSON claim set from id token / userinfo endpoint of UAEPass.
-     * @param entry      A collective view of JSON claims without aon-User attributes.
+     * @param entry      A collective view of JSON claims without non-user attributes.
      * @param separator  The attribute separator obtained from getMultiAttributeSeparator method.
      */
     public void buildClaimMappings(Map<ClaimMapping, String> claims, Map.Entry<String, Object> entry,
@@ -615,7 +616,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      *
      * @param context                         The Authentication context received by authenticator.
      * @param authenticatedUserId             The user id of authenticated user.
-     * @return String                         The element which used to separate the attributes from the JSON payload.
+     * @return String                         The element which is used to separate the attributes from the
+     *                                        JSON payload.
      * @throws AuthenticationFailedException
      */
     public String getMultiAttributeSeparator(AuthenticationContext context, String authenticatedUserId)
@@ -680,7 +682,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context                       The Authentication context received by authenticator.
      * @param authzResponse                 The response from to authorize endpoint. (To get the received
      *                                      authorize code.)
-     * @return OAuthClientRequest           Returns the access token call which built.
+     * @return OAuthClientRequest           Returns the access token call which was built.
      * @throws UAEPassAuthnFailedException  Exception throws if unable to process the token request.
      */
     public OAuthClientRequest getAccessTokenRequest(AuthenticationContext context, OAuthAuthzResponse authzResponse)
@@ -763,20 +765,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * This method is used to modify commonAuth logout URL, where ever relevant to WSO2 Identity Server.
-     * This method will append the state parameter to redirect_uri's value as a query string.
-     *
-     * @param logOutURI  Logout URI with 02 query parameters (state and logout redirect_uri)
-     * @return String    Logout URI with 01 query parameter (redirect_uri)
-     */
-    public String modifyLogoutUrl(String logOutURI) {
-
-        return logOutURI.replace('&', '?');
-    }
-
-    /**
-     * Returns the Authorize URL of the UAEPass based on selected environment. First this method checks the if there is
-     * a valid key in the XML file configs. Otherwise, it will pick the default URL.
+     * Returns the authorize endpoint of the UAEPass based on selected environment.
+     * First this method will check if there is a valid key in the XML file configs. else, it will pick the default.
      *
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Authorize endpoint relevant to Staging / Production.
@@ -784,28 +774,28 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     public String getAuthorizeUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.StagingEndpointKeys.UAEPASS_STG_AUTHZ_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.StagingEndpointKeys.UAEPASS_STG_AUTHZ_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.StagingEndpointValues.UAEPASS_STG_AUTHZ_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.StagingEndpointKeys.UAEPASS_STG_AUTHZ_ENDPOINT_KEY);
             }
         } else {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_AUTHZ_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_AUTHZ_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.ProductionEndpointValues.
                         UAEPASS_PROD_AUTHZ_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.ProductionEndpointKeys.UAEPASS_PROD_AUTHZ_ENDPOINT_KEY);
             }
         }
     }
 
     /**
-     * Returns the Token URL of the UAEPass based on selected environment. First this method checks the if there is
-     * a valid key in the XML file configs. Otherwise, it will pick the default URL.
+     * Returns the token endpoint of the UAEPass based on selected environment.
+     * First this method will check if there is a valid key in the XML file configs. else, it will pick the default.
      *
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Token endpoint relevant to Staging/Production.
@@ -813,20 +803,20 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     public String getTokenUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.StagingEndpointKeys.UAEPASS_STG_TOKEN_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.StagingEndpointKeys.UAEPASS_STG_TOKEN_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.StagingEndpointValues.UAEPASS_STG_TOKEN_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.StagingEndpointKeys.UAEPASS_STG_TOKEN_ENDPOINT_KEY);
             }
         } else {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_TOKEN_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_TOKEN_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.ProductionEndpointValues.
                         UAEPASS_PROD_TOKEN_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.ProductionEndpointKeys.UAEPASS_PROD_TOKEN_ENDPOINT_KEY);
             }
         }
@@ -834,8 +824,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Returns the UserInfo URL of the UAEPass based on selected environment. First this method checks the if there is
-     * a valid key in the XML file configs. Otherwise, it will pick the default URL.
+     * Returns the user info endpoint of the UAEPass based on selected environment.
+     * First this method will check if there is a valid key in the XML file configs. else, it will pick the default.
      *
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the UserInfo endpoint relevant to Staging/Production.
@@ -843,29 +833,29 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     public String getUserInfoUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.StagingEndpointKeys.UAEPASS_STG_USER_INFO_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.StagingEndpointKeys.UAEPASS_STG_USER_INFO_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.StagingEndpointValues.
                         UAEPASS_STG_USER_INFO_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.StagingEndpointKeys.UAEPASS_STG_USER_INFO_ENDPOINT_KEY);
             }
         } else {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_USER_INFO_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_USER_INFO_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.ProductionEndpointValues.
                         UAEPASS_PROD_USER_INFO_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.ProductionEndpointKeys.UAEPASS_PROD_USER_INFO_ENDPOINT_KEY);
             }
         }
     }
 
     /**
-     * Returns the Logout URL of the UAEPass based on selected environment. First this method checks the if there is
-     * a valid key in the XML file configs. Otherwise, it will pick the default URL.
+     * Returns the logout endpoint of the UAEPass based on selected environment.
+     * First this method will check if there is a valid key in the XML file configs. else, it will pick the default.
      *
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Logout endpoint relevant to Staging/Production.
@@ -873,20 +863,20 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     public String getLogoutUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.StagingEndpointKeys.UAEPASS_STG_LOGOUT_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.StagingEndpointKeys.UAEPASS_STG_LOGOUT_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.StagingEndpointValues.UAEPASS_STG_LOGOUT_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.StagingEndpointKeys.UAEPASS_STG_LOGOUT_ENDPOINT_KEY);
             }
         } else {
-            if (StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
-                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_LOGOUT_ENDPOINT_KEY))) {
+            if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
+                    Endpoints.ProductionEndpointKeys.UAEPASS_PROD_LOGOUT_ENDPOINT_KEY)) {
                 return UAEPassAuthenticatorConstants.Endpoints.ProductionEndpointValues.
                         UAEPASS_PROD_LOGOUT_ENDPOINT_VALUE;
             } else {
-                return getAuthenticatorConfig().getParameterMap().get(UAEPassAuthenticatorConstants.
+                return getFileConfigValue(UAEPassAuthenticatorConstants.
                         Endpoints.ProductionEndpointKeys.UAEPASS_PROD_LOGOUT_ENDPOINT_KEY);
             }
         }
@@ -933,7 +923,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Checks whether the Staging environment has picked by the authenticator.
+     * Checks whether the Staging environment has been picked by the authenticator.
      *
      * @param context   The Authentication context received by authenticator.
      * @return Boolean  Staging environment has selected or not by the authenticator.
@@ -945,14 +935,36 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Checks whether the logout option has enabled by the authenticator.
+     * Checks whether the logout option has been enabled by the authenticator.
      *
      * @param context   The Authentication context received by authenticator.
-     * @return Boolean  Logout option has enabled or not by the authenticator.
+     * @return Boolean  Logout option has been enabled or not by the authenticator.
      */
     public boolean isLogoutEnabled(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         return Boolean.parseBoolean(authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.LOGOUT_ENABLE));
+    }
+
+    /**
+     * Checks whether if there is having a toml configuration according to the given config key.
+     *
+     * @param fileConfigKey  Endpoint key according to the selected UAEPass env.
+     * @return Boolean       Returns either true or false the availability of file config.
+     */
+    public boolean isFileConfigEmpty(String fileConfigKey) {
+
+        return StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(fileConfigKey));
+    }
+
+    /**
+     * Returns the toml configuration values of authenticator's endpoints according to the UAEPAss env.
+     *
+     * @param fileConfigKey Endpoint key according to the selected UAEPass env.
+     * @return String       Returns th endpoint's value.
+     */
+    public String getFileConfigValue(String fileConfigKey) {
+
+        return getAuthenticatorConfig().getParameterMap().get(fileConfigKey);
     }
 }

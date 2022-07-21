@@ -21,7 +21,7 @@
         <groupId>org.wso2.carbon.identity.uaepass.outbound</groupId>
         <artifactId>identity-outbound-auth-uaepass</artifactId>
         <relativePath>../../pom.xml</relativePath>
-        <version>1.3.20</version>
+        <version>5.1.0</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
