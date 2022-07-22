@@ -144,7 +144,11 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         if (StringUtils.isNotBlank(state)) {
             return state.split(",")[0];
         } else {
-            LOG.error("A unique identifier cannot be issued for both Request and Response. ContextIdentifier is NULL.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("A unique identifier cannot be issued for both Request and Response. " +
+                        "ContextIdentifier is NULL.");
+            }
+
             return null;
         }
     }
@@ -273,16 +277,19 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             }
 
         } catch (UAEPassAuthnFailedException e) {
-            throw new AuthenticationFailedException("Authentication process failed." +
-                    "Unable to process additional query parameters.", e);
+            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getMessage(), e);
         } catch (IOException e) {
             LOG.error("Authorization request building failed.");
-            throw new AuthenticationFailedException("Unable to pick correct env or a problem occurred in additional "
-                    + "query params when generating the authorize request.", e);
+            throw new AuthenticationFailedException(
+                    UAEPassAuthenticatorConstants.ErrorMessages.AUTHENTICATION_FAILED_ENV_SELECTION.getCode(),
+                    UAEPassAuthenticatorConstants.ErrorMessages.AUTHENTICATION_FAILED_ENV_SELECTION.getMessage(), e);
         } catch (OAuthSystemException e) {
             LOG.error("Unable to build the request with compulsory query parameters.");
-            throw new AuthenticationFailedException("Authentication process failed." +
-                    "Unable to build the request with compulsory query parameters.", e);
+            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE.getMessage(), e);
         }
     }
 
@@ -343,14 +350,18 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             context.setSubject(authenticatedUser);
 
         } catch (UAEPassAuthnFailedException e) {
-            throw new AuthenticationFailedException("Authentication process failed. " +
-                    "Unable to get OAuth client response.", e);
+            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE.getMessage(), e);
         } catch (UAEPassUserInfoFailedException e) {
-            throw new AuthenticationFailedException("Authentication process failed." +
-                    "Unable to build access token request.", e);
+            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getMessage(), e);
         } catch (OAuthProblemException e) {
             LOG.error("OAuth authorize response failure.");
-            throw new AuthenticationFailedException("Authentication process failed.", e);
+            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
         }
     }
 
@@ -429,7 +440,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param loginPage                Current authorize URL.
      * @return authzUrl                Returns the modified authorized URL appending the additional query params.
      */
-    public String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String loginPage)
+    protected String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String loginPage)
         throws UAEPassAuthnFailedException {
 
         String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
@@ -462,8 +473,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             finalAuthzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
         } catch (IllegalArgumentException | UnsupportedEncodingException e) {
             LOG.error("Authorize URL creation failed due to an issue of additional query parameters.");
-            throw new UAEPassAuthnFailedException("Authentication process failed. Unable to set " +
-                    "additional query parameters to the authorize request.", e);
+            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getMessage(), e);
         }
 
         return finalAuthzUrl;
@@ -477,7 +489,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context               The Authentication context received by authenticator.
      * @return Map<String, Object>  Map object of key value pairs of the logged user.
      */
-    public Map<String, Object> getUserInfoUserAttributes(OAuthClientResponse oAuthResponse,
+    protected Map<String, Object> getUserInfoUserAttributes(OAuthClientResponse oAuthResponse,
                                                          AuthenticationContext context)
             throws UAEPassUserInfoFailedException {
 
@@ -512,7 +524,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @return String                          The response which returns from the user info API call.
      * @throws UAEPassUserInfoFailedException  Throws an exception, if not obtains the user claims from the user info.
      */
-    public String sendUserInfoRequest(AuthenticationContext context, String accessToken)
+    protected String sendUserInfoRequest(AuthenticationContext context, String accessToken)
             throws UAEPassUserInfoFailedException {
 
         StringBuilder builder = new StringBuilder();
@@ -536,9 +548,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             }
 
         } catch (IOException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Unable to retrieve successful response from UAEPass UserInfo", e);
-            }
+            LOG.error("Unable to retrieve successful response from UAEPass UserInfo.");
             throw new UAEPassUserInfoFailedException("UAEPass UserInfo failure.", e);
         }
         if (LOG.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_ID_TOKEN)) {
@@ -556,7 +566,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @throws AuthenticationFailedException  Throws an AuthenticationFailedException exception to
      *                                        processAuthenticationResponse.
      */
-    public String getAuthenticatedUserId(Map<String, Object> userClaims)
+    protected String getAuthenticatedUserId(Map<String, Object> userClaims)
             throws AuthenticationFailedException {
 
         String authenticatedUserId;
@@ -565,6 +575,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 LOG.debug("Authenticated user id: " + authenticatedUserId + " retrieved from the 'sub' claim.");
             }
         if (StringUtils.isBlank(authenticatedUserId)) {
+            LOG.error("The authenticated user id is empty.");
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP.getCode(),
                     UAEPassAuthenticatorConstants.ErrorMessages.USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP.
@@ -581,7 +592,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param entry      A collective view of JSON claims without non-user attributes.
      * @param separator  The attribute separator obtained from getMultiAttributeSeparator method.
      */
-    public void buildClaimMappings(Map<ClaimMapping, String> claims, Map.Entry<String, Object> entry,
+    protected void buildClaimMappings(Map<ClaimMapping, String> claims, Map.Entry<String, Object> entry,
                                    String separator) {
 
         StringBuilder claimValue = null;
@@ -620,7 +631,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      *                                        JSON payload.
      * @throws AuthenticationFailedException
      */
-    public String getMultiAttributeSeparator(AuthenticationContext context, String authenticatedUserId)
+    protected String getMultiAttributeSeparator(AuthenticationContext context, String authenticatedUserId)
             throws AuthenticationFailedException {
 
         String attributeSeparator = null;
@@ -660,7 +671,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param idToken               The received Id token from the processAuthenticationResponse.
      * @return Map<Strng, Object>   Decoded JWT payload via JSON Key value pairs.
      */
-    public Map<String, Object> getIdTokenClaims(AuthenticationContext context, String idToken) {
+    protected Map<String, Object> getIdTokenClaims(AuthenticationContext context, String idToken) {
 
         context.setProperty(UAEPassAuthenticatorConstants.UAE.ID_TOKEN, idToken);
         String base64Body = idToken.split("\\.")[1];
@@ -685,7 +696,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @return OAuthClientRequest           Returns the access token call which was built.
      * @throws UAEPassAuthnFailedException  Exception throws if unable to process the token request.
      */
-    public OAuthClientRequest getAccessTokenRequest(AuthenticationContext context, OAuthAuthzResponse authzResponse)
+    protected OAuthClientRequest getAccessTokenRequest(AuthenticationContext context, OAuthAuthzResponse authzResponse)
             throws UAEPassAuthnFailedException {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
@@ -709,12 +720,14 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
 
         } catch (OAuthSystemException e) {
             LOG.error("Unable to build the request with request's body attributes.");
-            throw new UAEPassAuthnFailedException("Exception while building access token request "
-                    + "with the request body", e);
+            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE.getMessage(), e);
         } catch (URLBuilderException e) {
             LOG.error("Unable to identify common-auth URL on browser.");
-            throw new UAEPassAuthnFailedException("Error occurred while extracting the absolute public " +
-                    "URL from browser.", e);
+            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE.getMessage(), e);
         }
 
         return accessTokenRequest;
@@ -728,7 +741,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @return OAuthClientResponse          Returns the OAuth client response from the authenticator.
      * @throws UAEPassAuthnFailedException  UAEPassAuthnFailedException will throw to the processAuthenticationResponse.
      */
-    public OAuthClientResponse getOAuthResponse(OAuthClient oAuthClient, OAuthClientRequest accessRequest)
+    protected OAuthClientResponse getOAuthResponse(OAuthClient oAuthClient, OAuthClientRequest accessRequest)
             throws UAEPassAuthnFailedException {
 
         OAuthClientResponse oAuthResponse = null;
@@ -736,7 +749,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             oAuthResponse = oAuthClient.accessToken(accessRequest);
         } catch (OAuthSystemException | OAuthProblemException e) {
             LOG.error("UAEPass OAuth client response failed.");
-            throw new UAEPassAuthnFailedException("Unable to return OAuth client response.", e);
+            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    UAEPASS_AUTHN_FAILED_EXCEPTION.getCode(),
+                    UAEPassAuthenticatorConstants.ErrorMessages.UAEPASS_AUTHN_FAILED_EXCEPTION.getMessage(), e);
         }
 
         return oAuthResponse;
@@ -748,7 +763,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param request  The request that is received by the authenticator.
      * @return String  Returns the login type of the authenticator.
      */
-    public String getLoginType(HttpServletRequest request) {
+    protected String getLoginType(HttpServletRequest request) {
 
         String state = request.getParameter(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE);
         if (StringUtils.isNotBlank(state)) {
@@ -771,7 +786,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Authorize endpoint relevant to Staging / Production.
      */
-    public String getAuthorizeUrl(String envUAEPass) {
+    protected String getAuthorizeUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -800,7 +815,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Token endpoint relevant to Staging/Production.
      */
-    public String getTokenUrl(String envUAEPass) {
+    protected String getTokenUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -830,7 +845,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the UserInfo endpoint relevant to Staging/Production.
      */
-    public String getUserInfoUrl(String envUAEPass) {
+    protected String getUserInfoUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -860,7 +875,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Logout endpoint relevant to Staging/Production.
      */
-    public String getLogoutUrl(String envUAEPass) {
+    protected String getLogoutUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -888,7 +903,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context       The Authentication context received by authenticator.
      * @return String       Returns the selected environment. (Staging / Production)
      */
-    public String getUAEPassEnvironment(AuthenticationContext context) {
+    protected String getUAEPassEnvironment(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         if (isStagingEnvSelected(context)) {
@@ -910,7 +925,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      *                               id token.
      * @return Map<String, Object>   Map object of key value pairs of the logged user.
      */
-    public Map<String, Object> buildJSON(Set<Map.Entry<String, Object>> jwtAttributeSet) {
+    protected Map<String, Object> buildJSON(Set<Map.Entry<String, Object>> jwtAttributeSet) {
 
         Map<String, Object> jwtAttributeMap = new HashMap<String, Object>();
         for (Map.Entry<String, Object> entry : jwtAttributeSet) {
@@ -928,7 +943,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context   The Authentication context received by authenticator.
      * @return Boolean  Staging environment has selected or not by the authenticator.
      */
-    public boolean isStagingEnvSelected(AuthenticationContext context) {
+    protected boolean isStagingEnvSelected(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         return Boolean.parseBoolean(authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.UAEPASS_ENV));
@@ -940,7 +955,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context   The Authentication context received by authenticator.
      * @return Boolean  Logout option has been enabled or not by the authenticator.
      */
-    public boolean isLogoutEnabled(AuthenticationContext context) {
+    protected boolean isLogoutEnabled(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         return Boolean.parseBoolean(authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.LOGOUT_ENABLE));
@@ -952,7 +967,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param fileConfigKey  Endpoint key according to the selected UAEPass env.
      * @return Boolean       Returns either true or false the availability of file config.
      */
-    public boolean isFileConfigEmpty(String fileConfigKey) {
+    protected boolean isFileConfigEmpty(String fileConfigKey) {
 
         return StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(fileConfigKey));
     }
@@ -963,7 +978,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param fileConfigKey Endpoint key according to the selected UAEPass env.
      * @return String       Returns th endpoint's value.
      */
-    public String getFileConfigValue(String fileConfigKey) {
+    protected String getFileConfigValue(String fileConfigKey) {
 
         return getAuthenticatorConfig().getParameterMap().get(fileConfigKey);
     }

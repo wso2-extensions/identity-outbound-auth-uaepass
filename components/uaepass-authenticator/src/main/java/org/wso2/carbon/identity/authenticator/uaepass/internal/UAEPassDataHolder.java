@@ -22,6 +22,9 @@ package org.wso2.carbon.identity.authenticator.uaepass.internal;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
 import org.wso2.carbon.user.core.service.RealmService;
 
+/**
+ * Provides Realm service Instance to the OSGI Service Component when running the UAEPass authenticator.
+ */
 public class UAEPassDataHolder {
 
     private static UAEPassDataHolder instance = new UAEPassDataHolder();

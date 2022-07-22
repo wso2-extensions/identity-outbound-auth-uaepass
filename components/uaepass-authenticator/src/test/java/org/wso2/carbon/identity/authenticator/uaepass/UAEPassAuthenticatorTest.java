@@ -535,7 +535,7 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     }
 
     @Test(expectedExceptions = NullPointerException.class)
-    public void testGetSubjectAttributes() throws UAEPassUserInfoFailedException, IOException {
+    public void testGetSubjectAttributes() throws UAEPassUserInfoFailedException {
 
         Map<String, Object> result;
         mockAuthenticationRequestContext(mockAuthenticationContext);

@@ -23,14 +23,35 @@ package org.wso2.carbon.identity.authenticator.uaepass;
  * Includes all the constants variables used by the UAEPass authenticator.
  */
 public class UAEPassAuthenticatorConstants {
+
     public enum ErrorMessages {
 
-        USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP("UAEPass-60001",
+        USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP("UAEPass-65001",
                 "Cannot find the userId from the id_token sent by the UAEPass IDP."),
         RETRIEVING_MULTI_ATTRIBUTE_SEPARATOR_FAILED("UAEPass-65002",
                 "Error while retrieving multi attribute separator"),
         EXECUTING_CLAIM_TRANSFORMATION_FOR_IDP_FAILED("UAEPass-65003",
-                "Error while executing claim transformation for UAEPass: %s");
+                "Error while executing claim transformation for UAEPass : %s"),
+        AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65004",
+                "Authentication process failed. Unable to process additional query parameters."),
+        AUTHENTICATION_FAILED_ENV_SELECTION("UAEPass-65005", "Unable to pick correct env or a problem" +
+                "occurred in additional query params when generating the authorize request."),
+        AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE("UAEPass-65006",
+                "Authentication process failed. Unable to build the request with compulsory query parameters."),
+        AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE("UAEPass-65007", "Authentication process "
+                + "failed. Unable to get OAuth client response."),
+        AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE("UAEPass-65008", "Authentication process " +
+                "failed. Unable to build the access token request."),
+        AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE("UAEPass-65009", "Authentication process " +
+                "failed. Unable to get the OAuth authorization response."),
+        UAEPASS_AUTHN_FAILED_EXCEPTION("UAEPass-65010", "Unable to return OAuth client response"),
+        UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65011",
+                "UAEPaas Authentication process failed. Unable to set additional query parameters to the " +
+                        "authorize request"),
+        UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE("UAEPass-65012", "UAEPass Authentication" +
+                "Exception while building access token request with the request body"),
+        UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE("UAEPass-65013", "Error occurred while " +
+                "extracting the absolute public URL from the browser");
 
         private final String code;
         private final String message;
@@ -75,6 +96,7 @@ public class UAEPassAuthenticatorConstants {
     }
 
     public static class UAEPassRuntimeConstants {
+
         public static final String SUB = "sub";
         public static final String OIDC_DIALECT = "http://wso2.org/oidc/claim";
         public static final String DEFAULT_ACR_VALUES = "urn:safelayer:tws:policies:authentication:level:low";
@@ -86,7 +108,9 @@ public class UAEPassAuthenticatorConstants {
     }
 
     public class Endpoints {
+
         public class StagingEndpointKeys {
+
             public static final String UAEPASS_STG_AUTHZ_ENDPOINT_KEY = "UAEPassSTGAuthzEndpoint";
             public static final String UAEPASS_STG_TOKEN_ENDPOINT_KEY = "UAEPassSTGTokenEndpoint";
             public static final String UAEPASS_STG_USER_INFO_ENDPOINT_KEY = "UAEPassSTGUserInfoEndpoint";
@@ -94,6 +118,7 @@ public class UAEPassAuthenticatorConstants {
         }
 
         public class ProductionEndpointKeys {
+
             public static final String UAEPASS_PROD_AUTHZ_ENDPOINT_KEY = "UAEPassPRODAuthzEndpoint";
             public static final String UAEPASS_PROD_TOKEN_ENDPOINT_KEY = "UAEPassPRODTokenEndpoint";
             public static final String UAEPASS_PROD_USER_INFO_ENDPOINT_KEY = "UAEPassPRODUserInfoEndpoint";
@@ -101,6 +126,7 @@ public class UAEPassAuthenticatorConstants {
         }
 
         public class StagingEndpointValues {
+
             public static final String UAEPASS_STG_AUTHZ_ENDPOINT_VALUE = "https://stg-id.uaepass.ae/idshub/authorize";
             public static final String UAEPASS_STG_TOKEN_ENDPOINT_VALUE = "https://stg-id.uaepass.ae/idshub/token";
             public static final String UAEPASS_STG_USER_INFO_ENDPOINT_VALUE =
@@ -109,6 +135,7 @@ public class UAEPassAuthenticatorConstants {
         }
 
         public class ProductionEndpointValues {
+
             public static final String UAEPASS_PROD_AUTHZ_ENDPOINT_VALUE = "https://id.uaepass.ae/idshub/authorize";
             public static final String UAEPASS_PROD_TOKEN_ENDPOINT_VALUE = "https://id.uaepass.ae/idshub/token";
             public static final String UAEPASS_PROD_USER_INFO_ENDPOINT_VALUE = "https://id.uaepass.ae/idshub/userinfo";
@@ -117,6 +144,7 @@ public class UAEPassAuthenticatorConstants {
     }
 
     public class UAE {
+
         public static final String FEDERATED_IDP_COMPONENT_NAME = "UAEPassAuthenticator";
         public static final String FEDERATED_IDP_COMPONENT_FRIENDLY_NAME = "UAEPass";
         public static final String LOGIN_TYPE = "OIDC";
@@ -137,6 +165,7 @@ public class UAEPassAuthenticatorConstants {
     }
 
     public class UAEPassPropertyConstants {
+
         public static final String TEXTBOX = "string";
         public static final String CHECKBOX = "boolean";
     }
