@@ -1,12 +1,12 @@
 /*
- *  Copyright (c) 2022, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *  Copyright (c) 2022, WSO2 LLC (http://www.wso2.org) All Rights Reserved.
  *
- *  WSO2 Inc. licenses this file to you under the Apache License,
- *  Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License.
- *  You may obtain a copy of the License at
+ *  WSO2 LLC licenses this file to you under the Apache license,
+ *  Version 2.0 (the "license"); you may not use this file except
+ *  in compliance with the license.
+ *  You may obtain a copy of the license at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  *  Unless required by applicable law or agreed to in writing,
  *  software distributed under the License is distributed on an
@@ -51,7 +51,6 @@ import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
-import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -422,139 +421,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                                          AuthenticationContext context) {
 
         if (LOG.isDebugEnabled()) {
-            if (IdentityTenantUtil.isTenantQualifiedUrlsEnabled()) {
-                LOG.debug("Handled logout response from service provider " + request.getParameter("sp") +
-                        " in tenant domain " + IdentityTenantUtil.getTenantDomainFromContext());
-            } else {
-                LOG.debug("Handled logout response from service provider " + request.getParameter("sp") +
-                        " in tenant domain " + request.getParameter("tenantDomain"));
-            }
+                LOG.debug("Handled logout response from service provider " + context.getServiceProviderName() +
+                        " in tenant domain " + context.getTenantDomain());
         }
-    }
-
-    /**
-     * This method is used to add additional parameters along with the authorize request.
-     *
-     * @param authenticatorProperties  The user input fields of the authenticator.
-     * @param loginPage                Current authorize URL.
-     * @return authzUrl                Returns the modified authorized URL appending the additional query params.
-     */
-    protected String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String
-            loginPage) throws UAEPassAuthnFailedException {
-
-        String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
-        String[] splittedQueryParamsArr;
-
-        if (additionalQueryParams.contains(",")) {
-            splittedQueryParamsArr = additionalQueryParams.split(",");
-        } else {
-            splittedQueryParamsArr = additionalQueryParams.split("&");
-        }
-
-        String[] keyValuePairs;
-        Map<String, String> paramMap = new HashMap<>();
-
-        for (int i = 0; i < splittedQueryParamsArr.length; i++) {
-            keyValuePairs = (splittedQueryParamsArr[i]).split("=");
-            paramMap.put(keyValuePairs[0], keyValuePairs[1]);
-        }
-        String finalAuthzUrl = null;
-        try {
-            String authzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
-            if (!(authzUrl.contains(UAEPassAuthenticatorConstants.UAE.ACR_VALUES))) {
-                paramMap.put(UAEPassAuthenticatorConstants.UAE.ACR_VALUES,
-                        UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_ACR_VALUES);
-            }
-            if (!(authzUrl.contains(UAEPassAuthenticatorConstants.UAE.SCOPE))) {
-                paramMap.put(UAEPassAuthenticatorConstants.UAE.SCOPE,
-                        UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
-            }
-            finalAuthzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
-        } catch (IllegalArgumentException | UnsupportedEncodingException e) {
-            LOG.error("Authorize URL creation failed due to an issue of additional query parameters.");
-            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
-                    UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getCode(), UAEPassAuthenticatorConstants.
-                    ErrorMessages.UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getMessage(), e);
-        }
-
-        return finalAuthzUrl;
-    }
-
-    /**
-     * This method is used to retrieve user claims as key value pairs to the Java Map object from user info endpoint.
-     *
-     * @param oAuthResponse         The response from OAuthClient to authenticator by the UAEPass.
-     *                              (Use to get the access token.)
-     * @param context               The Authentication context received by authenticator.
-     * @return Map<String, Object>  Map object of key value pairs of the logged user.
-     */
-    protected Map<String, Object> getUserInfoUserAttributes(OAuthClientResponse oAuthResponse,
-                                                         AuthenticationContext context)
-            throws UAEPassUserInfoFailedException {
-
-        String accessToken = oAuthResponse.getParam(UAEPassAuthenticatorConstants.UAE.ACCESS_TOKEN);
-        String userInfoJsonPayload;
-        Map<String, Object> userInfoJwtAttributes = null;
-
-        try {
-            userInfoJsonPayload = sendUserInfoRequest(context, accessToken);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Successfully returns the userinfo JSON payload");
-            }
-            Set<Map.Entry<String, Object>> jwtAttributeSet;
-            jwtAttributeSet = JSONObjectUtils.parse(userInfoJsonPayload).entrySet();
-            userInfoJwtAttributes = buildJSON(jwtAttributeSet);
-
-        } catch (UAEPassUserInfoFailedException e) {
-            throw new UAEPassUserInfoFailedException("Unable to retrieve claims from user info.", e);
-        } catch (ParseException e) {
-            LOG.error("Error occurred while parsing user info payload by UAEPass.");
-            throw new UAEPassUserInfoFailedException("Error occurred while parsing user info payload by UAEPass.", e);
-        }
-
-        return userInfoJwtAttributes;
-    }
-
-    /**
-     * This method is used to create userinfo request with the access token.
-     *
-     * @param context                          The Authentication context received by authenticator.
-     * @param accessToken                      The access token obtained from the processAuthenticationResponse.
-     * @return String                          The response which returns from the user info API call.
-     * @throws UAEPassUserInfoFailedException  Throws an exception, if not obtains the user claims from the user info.
-     */
-    protected String sendUserInfoRequest(AuthenticationContext context, String accessToken)
-            throws UAEPassUserInfoFailedException {
-
-        StringBuilder builder = new StringBuilder();
-
-        try {
-            String envUAEPass = getUAEPassEnvironment(context);
-            URL userInfoUrl = new URL(getUserInfoUrl(envUAEPass));
-            HttpURLConnection httpURLConnection = (HttpURLConnection) userInfoUrl.openConnection();
-            httpURLConnection.setRequestMethod("GET");
-            httpURLConnection.setRequestProperty("Authorization", "Bearer " + accessToken);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
-            String inputLine = reader.readLine();
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("User info request is sent successfully.");
-            }
-
-            while (inputLine != null) {
-                builder.append(inputLine).append("\n");
-                inputLine = reader.readLine();
-            }
-
-        } catch (IOException e) {
-            LOG.error("Unable to retrieve successful response from UAEPass UserInfo.");
-            throw new UAEPassUserInfoFailedException("UAEPass UserInfo failure.", e);
-        }
-        if (LOG.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_ID_TOKEN)) {
-            LOG.debug("response: " + builder);
-        }
-
-        return builder.toString();
     }
 
     /**
@@ -778,13 +647,136 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
+     * This method is used to add additional parameters along with the authorize request.
+     *
+     * @param authenticatorProperties  The user input fields of the authenticator.
+     * @param loginPage                Current authorize URL.
+     * @return authzUrl                Returns the modified authorized URL appending the additional query params.
+     */
+    private String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String
+            loginPage) throws UAEPassAuthnFailedException {
+
+        String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
+        String[] splittedQueryParamsArr;
+
+        if (additionalQueryParams.contains(",")) {
+            splittedQueryParamsArr = additionalQueryParams.split(",");
+        } else {
+            splittedQueryParamsArr = additionalQueryParams.split("&");
+        }
+        String[] keyValuePairs;
+        Map<String, String> paramMap = new HashMap<>();
+
+        for (int i = 0; i < splittedQueryParamsArr.length; i++) {
+            keyValuePairs = (splittedQueryParamsArr[i]).split("=");
+            paramMap.put(keyValuePairs[0], keyValuePairs[1]);
+        }
+        String finalAuthzUrl = null;
+        try {
+            String authzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
+            if (!(authzUrl.contains(UAEPassAuthenticatorConstants.UAE.ACR_VALUES))) {
+                paramMap.put(UAEPassAuthenticatorConstants.UAE.ACR_VALUES,
+                        UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_ACR_VALUES);
+            }
+            if (!(authzUrl.contains(UAEPassAuthenticatorConstants.UAE.SCOPE))) {
+                paramMap.put(UAEPassAuthenticatorConstants.UAE.SCOPE,
+                        UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
+            }
+            finalAuthzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
+        } catch (IllegalArgumentException | UnsupportedEncodingException e) {
+            LOG.error("Authorize URL creation failed due to an issue of additional query parameters.");
+            throw new UAEPassAuthnFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                    UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getCode(), UAEPassAuthenticatorConstants.
+                    ErrorMessages.UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getMessage(), e);
+        }
+
+        return finalAuthzUrl;
+    }
+
+    /**
+     * This method is used to retrieve user claims as key value pairs to the Java Map object from user info endpoint.
+     *
+     * @param oAuthResponse         The response from OAuthClient to authenticator by the UAEPass.
+     *                              (Use to get the access token.)
+     * @param context               The Authentication context received by authenticator.
+     * @return Map<String, Object>  Map object of key value pairs of the logged user.
+     */
+    private Map<String, Object> getUserInfoUserAttributes(OAuthClientResponse oAuthResponse,
+                                                          AuthenticationContext context)
+            throws UAEPassUserInfoFailedException {
+
+        String accessToken = oAuthResponse.getParam(UAEPassAuthenticatorConstants.UAE.ACCESS_TOKEN);
+        String userInfoJsonPayload;
+        Map<String, Object> userInfoJwtAttributes = null;
+
+        try {
+            userInfoJsonPayload = sendUserInfoRequest(context, accessToken);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Successfully returns the userinfo JSON payload");
+            }
+            Set<Map.Entry<String, Object>> jwtAttributeSet;
+            jwtAttributeSet = JSONObjectUtils.parse(userInfoJsonPayload).entrySet();
+            userInfoJwtAttributes = buildJSON(jwtAttributeSet);
+
+        } catch (UAEPassUserInfoFailedException e) {
+            throw new UAEPassUserInfoFailedException("Unable to retrieve claims from user info.", e);
+        } catch (ParseException e) {
+            LOG.error("Error occurred while parsing user info payload by UAEPass.");
+            throw new UAEPassUserInfoFailedException("Error occurred while parsing user info payload by UAEPass.", e);
+        }
+
+        return userInfoJwtAttributes;
+    }
+
+    /**
+     * This method is used to create userinfo request with the access token.
+     *
+     * @param context                          The Authentication context received by authenticator.
+     * @param accessToken                      The access token obtained from the processAuthenticationResponse.
+     * @return String                          The response which returns from the user info API call.
+     * @throws UAEPassUserInfoFailedException  Throws an exception, if not obtains the user claims from the user info.
+     */
+    private String sendUserInfoRequest(AuthenticationContext context, String accessToken)
+            throws UAEPassUserInfoFailedException {
+
+        StringBuilder builder = new StringBuilder();
+
+        try {
+            String envUAEPass = getUAEPassEnvironment(context);
+            URL userInfoUrl = new URL(getUserInfoUrl(envUAEPass));
+            HttpURLConnection httpURLConnection = (HttpURLConnection) userInfoUrl.openConnection();
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.setRequestProperty("Authorization", "Bearer " + accessToken);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
+            String inputLine = reader.readLine();
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("User info request is sent successfully.");
+            }
+            while (inputLine != null) {
+                builder.append(inputLine).append("\n");
+                inputLine = reader.readLine();
+            }
+
+        } catch (IOException e) {
+            LOG.error("Unable to retrieve successful response from UAEPass UserInfo.");
+            throw new UAEPassUserInfoFailedException("UAEPass UserInfo failure.", e);
+        }
+        if (LOG.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_ID_TOKEN)) {
+            LOG.debug("response: " + builder);
+        }
+
+        return builder.toString();
+    }
+
+    /**
      * Returns the authorize endpoint of the UAEPass based on selected environment.
      * First this method will check if there is a valid key in the XML file configs. else, it will pick the default.
      *
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Authorize endpoint relevant to Staging / Production.
      */
-    protected String getAuthorizeUrl(String envUAEPass) {
+    private String getAuthorizeUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -813,7 +805,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Token endpoint relevant to Staging/Production.
      */
-    protected String getTokenUrl(String envUAEPass) {
+    private String getTokenUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -843,7 +835,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the UserInfo endpoint relevant to Staging/Production.
      */
-    protected String getUserInfoUrl(String envUAEPass) {
+    private String getUserInfoUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -873,7 +865,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param envUAEPass  The selected UAEPass Environment. (Staging / Production)
      * @return String     The Value of the Logout endpoint relevant to Staging/Production.
      */
-    protected String getLogoutUrl(String envUAEPass) {
+    private String getLogoutUrl(String envUAEPass) {
 
         if (StringUtils.equals(envUAEPass, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.STAGING)) {
             if (isFileConfigEmpty(UAEPassAuthenticatorConstants.
@@ -901,7 +893,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context       The Authentication context received by authenticator.
      * @return String       Returns the selected environment. (Staging / Production)
      */
-    protected String getUAEPassEnvironment(AuthenticationContext context) {
+    private String getUAEPassEnvironment(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         if (isStagingEnvSelected(context)) {
@@ -923,7 +915,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      *                               id token.
      * @return Map<String, Object>   Map object of key value pairs of the logged user.
      */
-    protected Map<String, Object> buildJSON(Set<Map.Entry<String, Object>> jwtAttributeSet) {
+    private Map<String, Object> buildJSON(Set<Map.Entry<String, Object>> jwtAttributeSet) {
 
         Map<String, Object> jwtAttributeMap = new HashMap<String, Object>();
         for (Map.Entry<String, Object> entry : jwtAttributeSet) {
@@ -941,7 +933,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context   The Authentication context received by authenticator.
      * @return Boolean  Staging environment has selected or not by the authenticator.
      */
-    protected boolean isStagingEnvSelected(AuthenticationContext context) {
+    private boolean isStagingEnvSelected(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         return Boolean.parseBoolean(authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.UAEPASS_ENV));
@@ -953,7 +945,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param context   The Authentication context received by authenticator.
      * @return Boolean  Logout option has been enabled or not by the authenticator.
      */
-    protected boolean isLogoutEnabled(AuthenticationContext context) {
+    private boolean isLogoutEnabled(AuthenticationContext context) {
 
         Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
         return Boolean.parseBoolean(authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.LOGOUT_ENABLE));
@@ -965,7 +957,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param fileConfigKey  Endpoint key according to the selected UAEPass env.
      * @return Boolean       Returns either true or false the availability of file config.
      */
-    protected boolean isFileConfigEmpty(String fileConfigKey) {
+    private boolean isFileConfigEmpty(String fileConfigKey) {
 
         return StringUtils.isBlank(getAuthenticatorConfig().getParameterMap().get(fileConfigKey));
     }
@@ -976,7 +968,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param fileConfigKey Endpoint key according to the selected UAEPass env.
      * @return String       Returns th endpoint's value.
      */
-    protected String getFileConfigValue(String fileConfigKey) {
+    private String getFileConfigValue(String fileConfigKey) {
 
         return getAuthenticatorConfig().getParameterMap().get(fileConfigKey);
     }

@@ -1,19 +1,19 @@
 /*
- * Copyright (c) 2022, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *  Copyright (c) 2022, WSO2 LLC (http://www.wso2.org) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ *  WSO2 LLC licenses this file to you under the Apache license,
+ *  Version 2.0 (the "license"); you may not use this file except
+ *  in compliance with the license.
+ *  You may obtain a copy of the license at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
  *
  */
 
@@ -30,27 +30,25 @@ public class UAEPassAuthenticatorConstants {
                 "Cannot find the userId from the id_token sent by the UAEPass IDP."),
         RETRIEVING_MULTI_ATTRIBUTE_SEPARATOR_FAILED("UAEPass-65002",
                 "Error while retrieving multi attribute separator"),
-        EXECUTING_CLAIM_TRANSFORMATION_FOR_IDP_FAILED("UAEPass-65003",
-                "Error while executing claim transformation for UAEPass : %s"),
-        AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65004",
+        AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65003",
                 "Authentication process failed. Unable to process additional query parameters."),
-        AUTHENTICATION_FAILED_ENV_SELECTION("UAEPass-65005", "Unable to pick correct env or a problem" +
+        AUTHENTICATION_FAILED_ENV_SELECTION("UAEPass-65004", "Unable to pick correct env or a problem" +
                 "occurred in additional query params when generating the authorize request."),
-        AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE("UAEPass-65006",
+        AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE("UAEPass-65005",
                 "Authentication process failed. Unable to build the request with compulsory query parameters."),
-        AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE("UAEPass-65007", "Authentication process "
+        AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE("UAEPass-65006", "Authentication process "
                 + "failed. Unable to get OAuth client response."),
-        AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE("UAEPass-65008", "Authentication process " +
+        AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE("UAEPass-65007", "Authentication process " +
                 "failed. Unable to build the access token request."),
-        AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE("UAEPass-65009", "Authentication process " +
+        AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE("UAEPass-65008", "Authentication process " +
                 "failed. Unable to get the OAuth authorization response."),
-        UAEPASS_AUTHN_FAILED_EXCEPTION("UAEPass-65010", "Unable to return OAuth client response"),
-        UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65011",
+        UAEPASS_AUTHN_FAILED_EXCEPTION("UAEPass-65009", "Unable to return OAuth client response"),
+        UAEPASS_AUTHEN_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS("UAEPass-65010",
                 "UAEPaas Authentication process failed. Unable to set additional query parameters to the " +
                         "authorize request"),
-        UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE("UAEPass-65012", "UAEPass Authentication" +
+        UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE("UAEPass-65011", "UAEPass Authentication" +
                 "Exception while building access token request with the request body"),
-        UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE("UAEPass-65013", "Error occurred while " +
+        UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE("UAEPass-65012", "Error occurred while " +
                 "extracting the absolute public URL from the browser");
 
         private final String code;

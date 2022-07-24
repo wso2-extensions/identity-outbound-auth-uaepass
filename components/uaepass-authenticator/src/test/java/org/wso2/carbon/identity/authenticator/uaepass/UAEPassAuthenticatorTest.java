@@ -1,19 +1,19 @@
 /*
- * Copyright (c) 2022, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *  Copyright (c) 2022, WSO2 LLC (http://www.wso2.org) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ *  WSO2 LLC licenses this file to you under the Apache license,
+ *  Version 2.0 (the "license"); you may not use this file except
+ *  in compliance with the license.
+ *  You may obtain a copy of the license at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
  *
  */
 
@@ -46,7 +46,6 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.SubProperty;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
-import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
 import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
 import org.wso2.carbon.identity.core.ServiceURL;
@@ -66,18 +65,16 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertThrows;
 
 @PrepareForTest({LogFactory.class, OAuthAuthzResponse.class, OAuthClientRequest.class, UAEPassDataHolder.class,
         URL.class, ServiceURLBuilder.class, OAuthClientResponse.class, IdentityUtil.class, UAEPassAuthenticator.class,
@@ -257,60 +254,6 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         };
     }
 
-    @DataProvider(name = "envSelector")
-    public Object[][] getEnv() {
-
-        return new String[][]{
-                {"Staging", "sandbox_stage", String.valueOf(true)},
-                {"Production", "sandbox_production", String.valueOf(true)},
-                {null, "sandbox_staging", String.valueOf(false)}
-        };
-    }
-
-    @DataProvider(name = "authorizeEndpointProvider")
-    public Object[][] getAuthorizeEndpoints() {
-
-        return new String[][]{
-                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint"},
-                {"Production", "false", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint"},
-                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint"},
-                {"Production", "true", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint"}
-        };
-    }
-
-    @DataProvider(name = "tokenEndpointProvider")
-    public Object[][] getTokenEndpoints() {
-
-        return new String[][]{
-                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint"},
-                {"Production", "false", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint"},
-                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint"},
-                {"Production", "true", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint"}
-        };
-    }
-
-    @DataProvider(name = "userinfoEndpointProvider")
-    public Object[][] getUserInfoEndpoints() {
-
-        return new String[][]{
-                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint"},
-                {"Production", "false", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint"},
-                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint"},
-                {"Production", "true", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint"}
-        };
-    }
-
-    @DataProvider(name = "logoutEndpointProvider")
-    public Object[][] getLogoutEndpoints() {
-
-        return new String[][]{
-                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint"},
-                {"Production", "false", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint"},
-                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint"},
-                {"Production", "true", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint"}
-        };
-    }
-
     @DataProvider(name = "logoutProvider")
     public Object[][] getLogoutParams() {
 
@@ -321,70 +264,12 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     }
 
     @Test
-    public void testGetUAEPassStagingEnvironment() {
-
-        when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
-        mockAuthenticationRequestContext(mockAuthenticationContext);
-        when(mockUaePassAuthenticator.isStagingEnvSelected(mockAuthenticationContext)).thenReturn(true);
-        assertEquals(uaePassAuthenticator.getUAEPassEnvironment(mockAuthenticationContext), "Staging");
-    }
-
-    @Test(dataProvider = "authorizeEndpointProvider", expectedExceptions = NullPointerException.class)
-    public void testGetAuthorizeUrl(String env, String availability, String endpoint, String key) {
-
-        boolean isEmpty = Boolean.parseBoolean(availability);
-        when(mockUaePassAuthenticator.getUAEPassEnvironment(mockAuthenticationContext)).thenReturn(env);
-        when(mockUaePassAuthenticator.isFileConfigEmpty(key)).thenReturn(isEmpty);
-        when(mockUaePassAuthenticator.getFileConfigValue(key)).thenReturn(endpoint);
-        assertEquals(uaePassAuthenticator.getAuthorizeUrl(env), endpoint);
-    }
-
-    @Test(dataProvider = "tokenEndpointProvider", expectedExceptions = NullPointerException.class)
-    public void testGetTokenUrl(String env, String availability, String endpoint, String key) {
-
-        boolean isEmpty = Boolean.parseBoolean(availability);
-        when(mockUaePassAuthenticator.getUAEPassEnvironment(mockAuthenticationContext)).thenReturn(env);
-        when(mockUaePassAuthenticator.isFileConfigEmpty(key)).thenReturn(isEmpty);
-        when(mockUaePassAuthenticator.getFileConfigValue(key)).thenReturn(endpoint);
-        assertEquals(uaePassAuthenticator.getLogoutUrl(env), endpoint);
-    }
-
-    @Test(dataProvider = "userinfoEndpointProvider", expectedExceptions = NullPointerException.class)
-    public void testGetUserInfoUrl(String env, String availability, String endpoint, String key) {
-
-        boolean isEmpty = Boolean.parseBoolean(availability);
-        when(mockUaePassAuthenticator.getUAEPassEnvironment(mockAuthenticationContext)).thenReturn(env);
-        when(mockUaePassAuthenticator.isFileConfigEmpty(key)).thenReturn(isEmpty);
-        when(mockUaePassAuthenticator.getFileConfigValue(key)).thenReturn(endpoint);
-        assertEquals(uaePassAuthenticator.getLogoutUrl(env), endpoint);
-    }
-
-    @Test(dataProvider = "logoutEndpointProvider", expectedExceptions = NullPointerException.class)
-    public void testGetLogoutUrl(String env, String availability, String endpoint, String key) {
-
-        boolean isEmpty = Boolean.parseBoolean(availability);
-        when(mockUaePassAuthenticator.getUAEPassEnvironment(mockAuthenticationContext)).thenReturn(env);
-        when(mockUaePassAuthenticator.isFileConfigEmpty(key)).thenReturn(isEmpty);
-        when(mockUaePassAuthenticator.getFileConfigValue(key)).thenReturn(endpoint);
-        assertEquals(uaePassAuthenticator.getLogoutUrl(env), endpoint);
-    }
-
-    @Test
     private void mockAuthenticationRequestContext(AuthenticationContext mockAuthenticationContext) {
 
         when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
         paramValueMap = new HashMap<>();
         when(mockAuthenticationContext.getProperty("oidc:param.map")).thenReturn(paramValueMap);
         when(mockAuthenticationContext.getContextIdentifier()).thenReturn("");
-    }
-
-    @Test
-    public void testAdditionalQueryParamSeperation() throws UAEPassAuthnFailedException {
-
-        String url = "https://stg-ids.uaepass.ae/oauth2/authorize";
-        assertEquals(uaePassAuthenticator.processAdditionalQueryParamSeperation(authenticatorProperties, url),
-                "https://stg-ids.uaepass.ae/oauth2/authorize?loginType=basic&scope=openid&acr_values=" +
-                        "urn%3Asafelayer%3Atws%3Apolicies%3Aauthentication%3Alevel%3Alow&state=OIDC");
     }
 
     private void setupTest() throws Exception {
@@ -459,13 +344,13 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
                 mockServletResponse, mockAuthenticationContext);
     }
 
-    @Test(expectedExceptions = AuthenticationFailedException.class)
+    @Test
     public void testInitiateAuthenticationRequestNullProperties() throws AuthenticationFailedException {
 
-        mockAuthenticationRequestContext(mockAuthenticationContext);
         when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(null);
-        uaePassAuthenticator.initiateAuthenticationRequest(mockServletRequest, mockServletResponse,
-                mockAuthenticationContext);
+        assertThrows(AuthenticationFailedException.class, () -> uaePassAuthenticator.initiateAuthenticationRequest
+                (mockServletRequest, mockServletResponse,
+                        mockAuthenticationContext));
     }
 
     @Test
@@ -523,31 +408,6 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         when(mockOAuthClientResponse.getParam("id_token")).thenReturn(idToken);
     }
 
-    @Test(expectedExceptions = NullPointerException.class)
-    public void testGetSubjectAttributes() throws UAEPassUserInfoFailedException {
-
-        Map<String, Object> result;
-        mockAuthenticationRequestContext(mockAuthenticationContext);
-        when(mockOAuthClientResponse.getParam("access_token")).
-                thenReturn("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
-        result = uaePassAuthenticator.getUserInfoUserAttributes(mockOAuthClientResponse, mockAuthenticationContext);
-        assertTrue(result.isEmpty(), "result is not Empty.");
-
-        Map<String, Object> jsonObject = new HashMap<>();
-        jsonObject.put("email", "{\"http://www.wso2.org/email\" : \"example@wso2.com\"}");
-        String json = jsonObject.toString();
-        uaePassAuthenticator = spy(UAEPassAuthenticator.class);
-        doReturn(json).when(uaePassAuthenticator).sendUserInfoRequest(mockAuthenticationContext, any(String.class));
-        result = uaePassAuthenticator.getUserInfoUserAttributes(mockOAuthClientResponse, mockAuthenticationContext);
-        assertTrue(!result.isEmpty(), "result is Empty.");
-
-        // Test with a json response which is empty.
-        doReturn(" ").when(uaePassAuthenticator).sendUserInfoRequest(mockAuthenticationContext,
-                any(String.class));
-        result = uaePassAuthenticator.getUserInfoUserAttributes(mockOAuthClientResponse, mockAuthenticationContext);
-        assertTrue(result.isEmpty(), "result is not Empty.");
-    }
-
     @Test(dataProvider = "commonAuthParamProvider")
     public void testInitiateAuthenticationRequest(String authParam, String expectedValue,
                                                   String errorMsg) throws Exception {
@@ -559,8 +419,6 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
         when(mockAuthenticationContext.getContextIdentifier()).thenReturn("ContextIdentifier");
         when(mockServletRequest.getParameter("domain")).thenReturn("carbon_super");
-        when(mockUaePassAuthenticator.getAuthorizeUrl("Staging"))
-                .thenReturn("https://stg-id.uaepass.ae/idshub/authorize");
         authenticatorProperties.put("commonAuthQueryParams", authParam);
         when(mockUaePassAuthenticator.getRuntimeParams(mockAuthenticationContext)).
                 thenReturn(authenticatorProperties);
@@ -571,15 +429,21 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
                 mockAuthenticationContext);
     }
 
-    @Test(dataProvider = "requestDataHandler")
-    public void testGetContextIdentifier(String grantType, String state, String loginType, String error,
-                                         String expectedCanHandler, String expectedContext, String msgCanHandler,
-                                         String msgContext) throws Exception {
+    @DataProvider (name = "stateProviders")
+    public Object[][] getStateProviders() {
 
-        when(mockServletRequest.getParameter("code")).thenReturn(grantType);
-        when(mockServletRequest.getParameter("state")).thenReturn(state);
-        when(mockServletRequest.getParameter("OIDC")).thenReturn(loginType);
-        assertEquals(uaePassAuthenticator.getContextIdentifier(mockServletRequest), expectedContext, msgContext);
+        return new String[][] {
+                { "O569jh-vbrty765-792PMLDR-NH591BV,OIDC", "O569jh-vbrty765-792PMLDR-NH591BV" },
+                { "OIDC", "OIDC" },
+                { null , null }
+        };
+    }
+
+    @Test(dataProvider = "stateProviders")
+    public void testGetContextIdentifier(String actualState, String expectedState) {
+
+        when(mockServletRequest.getParameter("state")).thenReturn(actualState);
+        assertEquals(uaePassAuthenticator.getContextIdentifier(mockServletRequest), expectedState);
     }
 
     @Test(dataProvider = "seperator")
@@ -610,29 +474,10 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         setupTest();
         when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
         mockAuthenticationRequestContext(mockAuthenticationContext);
-        when(mockUaePassAuthenticator.isLogoutEnabled(mockAuthenticationContext)).thenReturn(true);
         when(mockAuthenticationContext.getContextIdentifier()).thenReturn("ContextIdentifier");
         when(mockServletRequest.getParameter("redirect_uri")).thenReturn(postLogoutRedirectUri);
-        when(mockUaePassAuthenticator.getLogoutUrl("Staging"))
-                .thenReturn("https://stg-id.uaepass.ae/idshub/logout");
         uaePassAuthenticator.initiateLogoutRequest(mockServletRequest, mockServletResponse,
                 mockAuthenticationContext);
-    }
-
-    @Test
-    public void testEnableLogout() {
-
-        when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
-        mockAuthenticationRequestContext(mockAuthenticationContext);
-        assertEquals(uaePassAuthenticator.isLogoutEnabled(mockAuthenticationContext), true);
-    }
-
-    @Test
-    public void testIsStagingSelected() {
-
-        when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
-        mockAuthenticationRequestContext(mockAuthenticationContext);
-        assertEquals(uaePassAuthenticator.isStagingEnvSelected(mockAuthenticationContext), true);
     }
 
     @Test
