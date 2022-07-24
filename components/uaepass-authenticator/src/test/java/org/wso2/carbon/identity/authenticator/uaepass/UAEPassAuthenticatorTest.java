@@ -19,6 +19,7 @@
 
 package org.wso2.carbon.identity.authenticator.uaepass;
 
+import org.apache.commons.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.oltu.oauth2.client.OAuthClient;
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
@@ -27,7 +28,6 @@ import org.apache.oltu.oauth2.client.response.OAuthClientResponse;
 import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.apache.commons.logging.Log;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -45,41 +45,36 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.SubProperty;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
+import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
 import org.wso2.carbon.identity.core.ServiceURL;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
-import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
-import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.user.api.RealmConfiguration;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.net.URL;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
-import java.util.List;
-
-import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
-
+import java.net.URL;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
+import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.doReturn;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertNotNull;
@@ -90,6 +85,24 @@ import static org.testng.Assert.assertNotNull;
         IdentityTenantUtil.class})
 public class UAEPassAuthenticatorTest extends PowerMockTestCase {
 
+    private static final String accessToken = "fd2fffca-b5e2-466d-aac9-207382497b88";
+    private static final String idToken = "eyJ4NXQiOiJOVGRtWmpNNFpEazNOalkwWXpjNU1tWm1PRGd3TVRFM01XWXdOREU1TVdSbFpEZzROemM0Wk" +
+            "EiLCJraWQiOiJNell4TW1Ga09HWXdNV0kwWldObU5EY3hOR1l3WW1NNFpUQTNNV0kyTkRBelpHUXpOR00wWkdSbE5qSmtPREZrWkRSaU9U" +
+            "RmtNV0ZoTXpVMlpHVmxOZ19SUzI1NiIsImFsZyI6IlJTMjU2In0.eyJhdF9oYXNoIjoiNzgwOE5OTlphN2ZfdHFzaVVzNG5vZyIsInN1Yi" +
+            "I6Ijk0NzEyMTg0NTE4IiwiZ2VuZGVyIjoiVW5rbm93biIsImFtciI6WyJVQUVQYXNzQXV0aGVudGljYXRvciIsIkJhc2ljQXV0aGVudGl" +
+            "jYXRvciJdLCJpc3MiOiJodHRwczpcL1wvbG9jYWxob3N0Ojk0NDNcL29hdXRoMlwvdG9rZW4iLCJtb2JpbGUiOiI5NDcxMjE4NDUxOCIs" +
+            "Imxhc3RuYW1lRU4iOiJLYWx1Ym93aWxhIiwiZnVsbG5hbWVFTiI6IkRpbXV3YW5DIEthbHVib3dpbGEiLCJzaWQiOiIxYzMwMTBlOS1iYT" +
+            "Q2LTQ1NGMtODVkMS03N2U3ZmIzZTk4N2QiLCJhdWQiOiJ0WFU0RXlsaTRmb0U1SWVuQlZjRGVnTk9mUDBhIiwiY19oYXNoIjoiMXZqRnl" +
+            "FR1FicmdFWnoyM0x3SWVJdyIsIm5iZiI6MTY1NzIwNTk0MiwiYXpwIjoidFhVNEV5bGk0Zm9FNUllbkJWY0RlZ05PZlAwYSIsInVzZXJUe" +
+            "XBlIjoiU09QMSIsImV4cCI6MTY1NzIwOTU0MiwiaWF0IjoxNjU3MjA1OTQyLCJNdWx0aUF0dHJpYnV0ZVNlcGFyYXRvciI6W10sImVtYWl" +
+            "sIjoiZGNrYWx1Ym93aWxhMjUxMzJAZ21haWwuY29tIn0.VM5fxgtpl07oPxd4RNEwW4KvD0rJJV7Lrl9xSIseR2qzoIV3LzZok7Tr9XlLZ" +
+            "mx35MRDkQ7ezar8zZtfTXqaOEAeMIbD0a9yMx14NRhjzPA6iBtdCAdKGaua0RVPZDcr7IUAUsJSJ4Q6S4gYWiOfMHXvrB8zqqx9_rWQTk9" +
+            "Bxn_LkvgU0tyPu88b8G2fUISFTxXb69rJ1mtTfWH_oFGkwKH9ij4NjHp1P2n09S9fVZNT3v1nsY8B5d1bS5YBrRcgtBtPKhNlsQ_4OFq--" +
+            "PMB_OlzZrId6Po9IBarzUrpqY5uzCJGzSk5xAXlxq0jF42xUtAbD5L8CtoESxGMPYRZfg";
+    private static Map<String, String> authenticatorProperties;
+    private final int TENANT_ID = 1234;
+    UAEPassAuthenticator uaePassAuthenticator;
+    AuthenticatorConfig mockAuthConfig;
     @Mock
     private HttpServletRequest mockServletRequest;
     @Mock
@@ -128,25 +141,7 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     private ServiceURL serviceURL;
     @Mock
     private UserRealm mockUserRealm;
-    UAEPassAuthenticator uaePassAuthenticator;
-    AuthenticatorConfig mockAuthConfig;
-    private static Map<String, String> authenticatorProperties;
-    private final int TENANT_ID = 1234;
     private Map<String, String> paramValueMap;
-    private static final String accessToken = "fd2fffca-b5e2-466d-aac9-207382497b88";
-    private static final String idToken = "eyJ4NXQiOiJOVGRtWmpNNFpEazNOalkwWXpjNU1tWm1PRGd3TVRFM01XWXdOREU1TVdSbFpEZzROemM0Wk" +
-            "EiLCJraWQiOiJNell4TW1Ga09HWXdNV0kwWldObU5EY3hOR1l3WW1NNFpUQTNNV0kyTkRBelpHUXpOR00wWkdSbE5qSmtPREZrWkRSaU9U" +
-            "RmtNV0ZoTXpVMlpHVmxOZ19SUzI1NiIsImFsZyI6IlJTMjU2In0.eyJhdF9oYXNoIjoiNzgwOE5OTlphN2ZfdHFzaVVzNG5vZyIsInN1Yi" +
-            "I6Ijk0NzEyMTg0NTE4IiwiZ2VuZGVyIjoiVW5rbm93biIsImFtciI6WyJVQUVQYXNzQXV0aGVudGljYXRvciIsIkJhc2ljQXV0aGVudGl" +
-            "jYXRvciJdLCJpc3MiOiJodHRwczpcL1wvbG9jYWxob3N0Ojk0NDNcL29hdXRoMlwvdG9rZW4iLCJtb2JpbGUiOiI5NDcxMjE4NDUxOCIs" +
-            "Imxhc3RuYW1lRU4iOiJLYWx1Ym93aWxhIiwiZnVsbG5hbWVFTiI6IkRpbXV3YW5DIEthbHVib3dpbGEiLCJzaWQiOiIxYzMwMTBlOS1iYT" +
-            "Q2LTQ1NGMtODVkMS03N2U3ZmIzZTk4N2QiLCJhdWQiOiJ0WFU0RXlsaTRmb0U1SWVuQlZjRGVnTk9mUDBhIiwiY19oYXNoIjoiMXZqRnl" +
-            "FR1FicmdFWnoyM0x3SWVJdyIsIm5iZiI6MTY1NzIwNTk0MiwiYXpwIjoidFhVNEV5bGk0Zm9FNUllbkJWY0RlZ05PZlAwYSIsInVzZXJUe" +
-            "XBlIjoiU09QMSIsImV4cCI6MTY1NzIwOTU0MiwiaWF0IjoxNjU3MjA1OTQyLCJNdWx0aUF0dHJpYnV0ZVNlcGFyYXRvciI6W10sImVtYWl" +
-            "sIjoiZGNrYWx1Ym93aWxhMjUxMzJAZ21haWwuY29tIn0.VM5fxgtpl07oPxd4RNEwW4KvD0rJJV7Lrl9xSIseR2qzoIV3LzZok7Tr9XlLZ" +
-            "mx35MRDkQ7ezar8zZtfTXqaOEAeMIbD0a9yMx14NRhjzPA6iBtdCAdKGaua0RVPZDcr7IUAUsJSJ4Q6S4gYWiOfMHXvrB8zqqx9_rWQTk9" +
-            "Bxn_LkvgU0tyPu88b8G2fUISFTxXb69rJ1mtTfWH_oFGkwKH9ij4NjHp1P2n09S9fVZNT3v1nsY8B5d1bS5YBrRcgtBtPKhNlsQ_4OFq--" +
-            "PMB_OlzZrId6Po9IBarzUrpqY5uzCJGzSk5xAXlxq0jF42xUtAbD5L8CtoESxGMPYRZfg";
 
     @BeforeTest
     public void init() {
@@ -195,8 +190,8 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     }
 
     @Test(dataProvider = "requestDataHandler")
-    public void testCanHandle(String grantType, String state, String loginType, String error, String expectedCanHandler,
-                              String expectedContext, String msgCanHandler, String msgContext) throws IOException {
+    public void testCanHandle(String grantType, String state, String loginType, String expectedCanHandler,
+                              String msgCanHandler) {
 
         when(mockServletRequest.getParameter("code")).thenReturn(grantType);
         when(mockServletRequest.getParameter("state")).thenReturn(state);
@@ -231,8 +226,8 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     public Object[][] getSeperator() {
 
         return new String[][]{
-                { "," },
-                { ",,," }
+                {","},
+                {",,,"}
         };
     }
 
@@ -240,31 +235,25 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     public Object[][] getRequestStatus() {
 
         return new String[][]{
-                // When all parameters not null.
-                { "code", "active,OIDC", "BASIC", "Error Login.", "true", "active", "Invalid can handle response for" +
-                        " the request.", "Invalid context identifier." },
-                // When grant_type and login_type are null.
-                { null, "active,OIDC", null, "Error Login.", "true", "active", "Invalid can handle response for the " +
-                        "request.", "Invalid context identifier." },
-                // When all parameters null.
-                { null, null, null, null, "false", null, "Invalid can handle response for the request.", "Invalid " +
-                        "context identifier." }
+                {"code", "active,OIDC", "BASIC", "true", "Invalid can handle response for the request" },
+                {null, "active,OIDC", null, "true", "Invalid can handle response for the request" },
+                {null, null, null, "false", "Invalid can handle response for the request" }
         };
     }
 
     @DataProvider(name = "commonAuthParamProvider")
     public Object[][] getCommonAuthParams() {
 
-        return new String[][] {
-                { "scope=openid&state=OIDC&loginType=basic&redirect_uri=https://localhost:9443/commonauth",
-                        "https://localhost:9443/commonauth", "The redirect URI is invalid" },
-                { "state=OIDC&loginType=basic&redirect_uri=https://localhost:9443/commonauth",
-                        "https://localhost:9443/commonauth", "The redirect URI is invalid" },
-                { "state=OIDC&loginType=basic", "https://localhost:9443/commonauth", "The redirect URI is invalid" },
-                { "login_hint=$authparam{username}", "https://localhost:9443/commonauth",
-                        "The redirect URI is invalid" },
-                { "login_hint=$authparam{username}&domain=$authparam{fidp}", "https://localhost:9443/commonauth",
-                        "The redirect URI is invalid" }
+        return new String[][]{
+                {"scope=openid&state=OIDC&loginType=basic&redirect_uri=https://localhost:9443/commonauth",
+                        "https://localhost:9443/commonauth", "The redirect URI is invalid"},
+                {"state=OIDC&loginType=basic&redirect_uri=https://localhost:9443/commonauth",
+                        "https://localhost:9443/commonauth", "The redirect URI is invalid"},
+                {"state=OIDC&loginType=basic", "https://localhost:9443/commonauth", "The redirect URI is invalid"},
+                {"login_hint=$authparam{username}", "https://localhost:9443/commonauth",
+                        "The redirect URI is invalid"},
+                {"login_hint=$authparam{username}&domain=$authparam{fidp}", "https://localhost:9443/commonauth",
+                        "The redirect URI is invalid"}
         };
     }
 
@@ -272,62 +261,62 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     public Object[][] getEnv() {
 
         return new String[][]{
-                { "Staging", "sandbox_stage", String.valueOf(true) },
-                { "Production", "sandbox_production", String.valueOf(true) },
-                { null, "sandbox_staging", String.valueOf(false) }
+                {"Staging", "sandbox_stage", String.valueOf(true)},
+                {"Production", "sandbox_production", String.valueOf(true)},
+                {null, "sandbox_staging", String.valueOf(false)}
         };
     }
 
     @DataProvider(name = "authorizeEndpointProvider")
     public Object[][] getAuthorizeEndpoints() {
 
-        return new String[][] {
-                { "Staging", "false", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint" },
-                { "Production", "false", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint" },
-                { "Staging", "true", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint" },
-                { "Production", "true", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint" }
+        return new String[][]{
+                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint"},
+                {"Production", "false", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint"},
+                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/authorize", "UAEPassSTGAuthzEndpoint"},
+                {"Production", "true", "https://id.uaepass.ae/idshub/authorize", "UAEPassPRODAuthzEndpoint"}
         };
     }
 
     @DataProvider(name = "tokenEndpointProvider")
     public Object[][] getTokenEndpoints() {
 
-        return new String[][] {
-                { "Staging", "false", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint" },
-                { "Production", "false", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint" },
-                { "Staging", "true", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint" },
-                { "Production", "true", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint" }
+        return new String[][]{
+                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint"},
+                {"Production", "false", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint"},
+                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/token", "UAEPassSTGTokenEndpoint"},
+                {"Production", "true", "https://id.uaepass.ae/idshub/token", "UAEPassPRODTokenEndpoint"}
         };
     }
 
     @DataProvider(name = "userinfoEndpointProvider")
     public Object[][] getUserInfoEndpoints() {
 
-        return new String[][] {
-                { "Staging", "false", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint" },
-                { "Production", "false", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint" },
-                { "Staging", "true", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint" },
-                { "Production", "true", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint" }
+        return new String[][]{
+                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint"},
+                {"Production", "false", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint"},
+                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/userinfo", "UAEPassSTGUserInfoEndpoint"},
+                {"Production", "true", "https://id.uaepass.ae/idshub/userinfo", "UAEPassPRODUserInfoEndpoint"}
         };
     }
 
     @DataProvider(name = "logoutEndpointProvider")
     public Object[][] getLogoutEndpoints() {
 
-        return new String[][] {
-                { "Staging", "false", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint" },
-                { "Production", "false", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint" },
-                { "Staging", "true", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint" },
-                { "Production", "true", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint" }
+        return new String[][]{
+                {"Staging", "false", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint"},
+                {"Production", "false", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint"},
+                {"Staging", "true", "https://stg-id.uaepass.ae/idshub/logout", "UAEPassSTGLogoutEndpoint"},
+                {"Production", "true", "https://id.uaepass.ae/idshub/logout", "UAEPassPRODLogoutEndpoint"}
         };
     }
 
     @DataProvider(name = "logoutProvider")
     public Object[][] getLogoutParams() {
 
-        return new String[][] {
-                { "https://localhost:9443/commonauth" },
-                { null }
+        return new String[][]{
+                {"https://localhost:9443/commonauth"},
+                {null}
         };
     }
 

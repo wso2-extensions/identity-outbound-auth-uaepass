@@ -97,7 +97,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Returns the federated IdP component's friendly name.
+     * Returns authenticator's friendly name.
      *
      * @return String  The display name of the authenticator.
      */
@@ -108,7 +108,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
-     * Returns the federated IdP component name.
+     * Returns the authenticator's name.
      *
      * @return String  The identifier of the authenticator.
      */
@@ -417,7 +417,6 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param response  The response that is received to the authenticator.
      * @param context   The Authentication context received by authenticator.
      */
-
     @Override
     protected void processLogoutResponse(HttpServletRequest request, HttpServletResponse response,
                                          AuthenticationContext context) {
@@ -440,8 +439,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param loginPage                Current authorize URL.
      * @return authzUrl                Returns the modified authorized URL appending the additional query params.
      */
-    protected String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String loginPage)
-        throws UAEPassAuthnFailedException {
+    protected String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String
+            loginPage) throws UAEPassAuthnFailedException {
 
         String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
         String[] splittedQueryParamsArr;
@@ -682,9 +681,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         } catch (ParseException e) {
             LOG.error("Error occurred while parsing JWT ID token provided by UAEPass.", e);
         }
-        Map<String, Object> userInfoJwtAttributes = buildJSON(jwtAttributeSet);
+        Map<String, Object> idTokenJwtAttributes = buildJSON(jwtAttributeSet);
 
-        return userInfoJwtAttributes;
+        return idTokenJwtAttributes;
     }
 
     /**
@@ -773,8 +772,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             }
         }
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Empty split elements in state");
-            LOG.debug("Received request path info : " + request.getPathInfo());
+            LOG.debug("Empty split elements in state. Received request path info : " + request.getPathInfo());
         }
         return null;
     }
