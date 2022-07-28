@@ -397,9 +397,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 response.sendRedirect(logoutUrl);
 
             } catch (IllegalArgumentException | IOException e) {
-                LOG.error("Error in initiate logout URI build.");
                 String idpName = context.getExternalIdP().getName();
                 String tenantDomain = context.getTenantDomain();
+                LOG.error("Error in initiate logout URI build in IdP " + idpName + "at tenant domain " + tenantDomain);
                 throw new LogoutFailedException("Error occurred while initiating the logout request to IdP: " + idpName
                         + " of tenantDomain: " + tenantDomain, e);
             }
