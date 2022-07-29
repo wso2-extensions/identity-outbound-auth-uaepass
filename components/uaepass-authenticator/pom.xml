@@ -28,7 +28,6 @@
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>uae-pass-federated-authenticator</groupId>
     <artifactId>org.wso2.carbon.identity.authenticator.uaepass</artifactId>
     <packaging>bundle</packaging>
 
