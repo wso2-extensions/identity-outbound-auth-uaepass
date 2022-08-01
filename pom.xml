@@ -29,7 +29,7 @@
     <groupId>org.wso2.carbon.identity.uaepass.outbound</groupId>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>identity-outbound-auth-uaepass</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>UAEPass Outbound Authenticator</name>
 
