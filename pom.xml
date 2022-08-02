@@ -163,7 +163,6 @@
                         <preparationGoals>clean install</preparationGoals>
                         <tagNameFormat>${project.version}</tagNameFormat>
                         <autoVersionSubmodules>true</autoVersionSubmodules>
-                        <arguments>-Dmaven.javadoc.skip=true, -DignoreSnapshots=true, -Dfindbugs.skip=true</arguments>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -186,12 +185,9 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>generate-report</id>
-                            <phase>verify</phase>
-                        </execution>
-                    </executions>
+                    <configuration>
+                        <source>8</source>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
