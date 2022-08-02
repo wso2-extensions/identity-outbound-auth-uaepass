@@ -188,17 +188,8 @@
                     <artifactId>maven-javadoc-plugin</artifactId>
                     <executions>
                         <execution>
-                            <id>prepare-agent</id>
-                            <goals>
-                                <goal>prepare-agent</goal>
-                            </goals>
-                        </execution>
-                        <execution>
                             <id>generate-report</id>
                             <phase>verify</phase>
-                            <goals>
-                                <goal>report</goal>
-                            </goals>
                         </execution>
                     </executions>
                 </plugin>
