@@ -155,7 +155,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Returns all user input fields of the authenticator.
      *
-     * @return List <Property>  Returns the federated authenticator properties
+     * @return List  Returns the federated authenticator properties.
      */
     @Override
     public List<Property> getConfigurationProperties() {
@@ -298,7 +298,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @param request                         The request that is received by the authenticator.
      * @param response                        The response that is received to the authenticator.
      * @param context                         The Authentication context received by authenticator.
-     * @throws AuthenticationFailedException  Exception while creating the access token or id token
+     * @throws AuthenticationFailedException  Exception while creating the access token or id token.
      */
     @Override
     protected void processAuthenticationResponse(HttpServletRequest request, HttpServletResponse response,
@@ -535,9 +535,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * This method is used to retrieve user claims from id token.
      *
-     * @param context                 The Authentication context received by authenticator.
-     * @param idToken                 The received Id token from the processAuthenticationResponse.
-     * @return Map <String, Object>   Decoded JWT payload via JSON Key value pairs.
+     * @param context  The Authentication context received by authenticator.
+     * @param idToken  The received ID token from the processAuthenticationResponse.
+     * @return Map     Decoded JWT payload via JSON Key value pairs.
      */
     protected Map<String, Object> getIdTokenClaims(AuthenticationContext context, String idToken) {
 
