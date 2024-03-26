@@ -1,0 +1,13 @@
+{
+    "name": "UAEPass Authenticator",
+    "owner": "WSO2",
+    "category": "Federated authenticator",
+    "documentationUrl": "https://github.com/wso2-extensions/identity-outbound-auth-uaepass/tree/main/docs",
+    "description": "",
+    "status": "Active",
+    "labels": [
+        "federated",
+        "authenticator"
+    ],
+    "releases": []
+}
