@@ -9,5 +9,12 @@
         "federated",
         "authenticator"
     ],
-    "releases": []
+    "releases": [
+        {
+            "tagName": "1.0.0",
+            "products": [
+                "IS 5.11.0"
+            ]
+        }
+    ]
 }
