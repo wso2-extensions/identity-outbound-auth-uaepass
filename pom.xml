@@ -188,6 +188,7 @@
                     <configuration>
                         <doCheck>false</doCheck>
                         <doUpdate>false</doUpdate>
+                        <skip>true</skip>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -234,6 +235,7 @@
                             <version>LATEST</version>
                         </plugin>
                     </plugins>
+                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>
