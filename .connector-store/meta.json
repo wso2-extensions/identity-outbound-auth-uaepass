@@ -15,6 +15,12 @@
             "products": [
                 "IS 5.11.0"
             ]
+        },
+        {
+            "tagName": "v1.0.1",
+            "products": [
+                "IS 7.0.0"
+            ]
         }
     ]
 }
