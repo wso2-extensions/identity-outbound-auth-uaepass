@@ -19,6 +19,8 @@
 
 package org.wso2.carbon.identity.authenticator.uaepass;
 
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.oltu.oauth2.client.OAuthClient;
@@ -30,7 +32,9 @@ import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.mockito.Matchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
@@ -41,10 +45,16 @@ import org.wso2.carbon.identity.application.authentication.framework.config.mode
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationRequest;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatorData;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
+import org.wso2.carbon.identity.application.authenticator.oidc.util.OIDCTokenValidationUtil;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.application.common.model.IdentityProviderProperty;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.SubProperty;
+import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
 import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataManagementService;
@@ -53,6 +63,8 @@ import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.idp.mgt.IdentityProviderManager;
+import org.wso2.carbon.idp.mgt.util.IdPManagementConstants;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -63,10 +75,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
@@ -79,7 +94,8 @@ import static org.testng.Assert.assertThrows;
 @PrepareForTest({LogFactory.class, OAuthAuthzResponse.class, OAuthClientRequest.class, UAEPassDataHolder.class,
         URL.class, ServiceURLBuilder.class, OAuthClientResponse.class, IdentityUtil.class, UAEPassAuthenticator.class,
         UAEPassAuthenticatorConstants.class, AbstractApplicationAuthenticator.class, Property.class, Log.class,
-        IdentityTenantUtil.class})
+        IdentityTenantUtil.class, OIDCTokenValidationUtil.class, IdentityProviderManager.class})
+@SuppressStaticInitializationFor({"org.wso2.carbon.idp.mgt.IdentityProviderManager"})
 public class UAEPassAuthenticatorTest extends PowerMockTestCase {
 
     private static final String accessToken = "fd2fffca-b5e2-466d-aac9-207382497b88";
@@ -139,6 +155,18 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
     @Mock
     private UserRealm mockUserRealm;
     private Map<String, String> paramValueMap;
+    @Mock
+    private IdentityProvider identityProvider;
+    @Mock
+    private IdentityProviderManager identityProviderManager;
+
+    private static final String SESSION_DATA_KEY = "7b1c8131-c6bd-4682-892e-1a948a9e57e8";
+    private static final String CLIENT_ID = "tXU4Eyli4foE5IenBVcDegNOfP0a";
+    private static final String SUPER_TENANT = "carbon.super";
+    private AuthenticationRequest mockAuthenticationRequest = new AuthenticationRequest();
+    private static final String REDIRECT_URL = "https://stg-id.uaepass.ae/idshub/authorize?scope=openid&" +
+            "response_type=code&redirect_uri=https%3A%2F%2Flocalhost%3A9443%2Fcommonauth&" +
+            "state=958e9049-8cd2-4580-8745-6679ac8d33f6%2COIDC&client_id=sample.client-id";
 
     @BeforeTest
     public void init() {
@@ -515,5 +543,140 @@ public class UAEPassAuthenticatorTest extends PowerMockTestCase {
         final List<Property> result = uaePassAuthenticator.getConfigurationProperties();
 
         Assert.assertNotEquals(expectedResult, result);
+    }
+
+    @Test
+    public void testCanHandleForNativeSDKBasedFederation() {
+
+        when(mockServletRequest.getParameter(UAEPassAuthenticatorConstants.ACCESS_TOKEN_PARAM))
+                .thenReturn(accessToken);
+        when(mockServletRequest.getParameter(UAEPassAuthenticatorConstants.ID_TOKEN_PARAM)).thenReturn(idToken);
+        when(mockServletRequest.getParameter(UAEPassAuthenticatorConstants.SESSION_DATA_KEY_PARAM))
+                .thenReturn(SESSION_DATA_KEY);
+        when(mockServletRequest.getAttribute(FrameworkConstants.IS_API_BASED_AUTH_FLOW)).thenReturn(true);
+
+        Assert.assertTrue(uaePassAuthenticator.canHandle(mockServletRequest));
+        Assert.assertEquals(uaePassAuthenticator.getContextIdentifier(mockServletRequest), SESSION_DATA_KEY);
+    }
+
+    @Test
+    public void testGetI18nKey() {
+
+        String i18nKey = uaePassAuthenticator.getI18nKey();
+        Assert.assertEquals(i18nKey, UAEPassAuthenticatorConstants.AUTHENTICATOR_I18N_KEY);
+    }
+
+    @Test
+    public void testPassProcessAuthenticationResponseWithNativeSDKBaseFederation() throws Exception {
+
+        setupTest();
+        IdentityProviderProperty property = new IdentityProviderProperty();
+        property.setName(IdPManagementConstants.IS_TRUSTED_TOKEN_ISSUER);
+        property.setValue("true");
+        IdentityProviderProperty[] identityProviderProperties = new IdentityProviderProperty[1];
+        identityProviderProperties[0] = property;
+        when(mockAuthenticationContext.getExternalIdP()).thenReturn(externalIdPConfig);
+        when(externalIdPConfig.getIdentityProvider()).thenReturn(identityProvider);
+        when(identityProvider.getIdpProperties()).thenReturn(identityProviderProperties);
+        when(mockAuthenticationContext.getExternalIdP()).thenReturn(externalIdPConfig);
+        when(mockServletRequest.getParameter(UAEPassAuthenticatorConstants.ID_TOKEN_PARAM))
+                .thenReturn(idToken);
+        when(mockServletRequest.getParameter(UAEPassAuthenticatorConstants.ACCESS_TOKEN_PARAM))
+                .thenReturn(accessToken);
+
+        mockStatic(OIDCTokenValidationUtil.class);
+        doNothing().when(OIDCTokenValidationUtil.class, "validateIssuerClaim", Mockito.any((JWTClaimsSet.class)));
+        when(mockAuthenticationContext.getTenantDomain()).thenReturn(SUPER_TENANT);
+        mockStatic(IdentityProviderManager.class);
+        when(IdentityProviderManager.getInstance()).thenReturn(identityProviderManager);
+        when(identityProviderManager.getIdPByMetadataProperty(
+                Mockito.eq(IdentityApplicationConstants.IDP_ISSUER_NAME), anyString(), Mockito.eq(SUPER_TENANT),
+                Mockito.eq(false))).thenReturn(identityProvider);
+        doNothing().when(OIDCTokenValidationUtil.class, "validateSignature", Mockito.any(SignedJWT.class),
+                Mockito.any(IdentityProvider.class));
+
+        when(openIDConnectAuthenticatorDataHolder.getClaimMetadataManagementService()).thenReturn
+                (claimMetadataManagementService);
+        uaePassAuthenticator.processAuthenticationResponse(mockServletRequest,
+                mockServletResponse, mockAuthenticationContext);
+
+        assertEquals(mockAuthenticationContext.getProperty(UAEPassAuthenticatorConstants.UAE.ACCESS_TOKEN),
+                accessToken, "Invalid access token in the authentication context.");
+
+        assertEquals(mockAuthenticationContext.getProperty(UAEPassAuthenticatorConstants.UAE.ID_TOKEN), idToken,
+                "Invalid Id token in the authentication context.");
+    }
+
+    @Test
+    public void testGetAuthInitiationDataForNativeSDKBasedFederation() {
+
+        IdentityProviderProperty property = new IdentityProviderProperty();
+        property.setName(IdPManagementConstants.IS_TRUSTED_TOKEN_ISSUER);
+        property.setValue("true");
+        IdentityProviderProperty[] identityProviderProperties = new IdentityProviderProperty[1];
+        identityProviderProperties[0] = property;
+
+        when(mockAuthenticationContext.getExternalIdP()).thenReturn(externalIdPConfig);
+        when(externalIdPConfig.getIdPName()).
+                thenReturn(UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME);
+        when(externalIdPConfig.getIdentityProvider()).thenReturn(identityProvider);
+        when(identityProvider.getIdpProperties()).thenReturn(identityProviderProperties);
+        when(mockAuthenticationContext.getAuthenticationRequest()).thenReturn(mockAuthenticationRequest);
+        when(mockAuthenticationContext.getAuthenticatorProperties()).thenReturn(authenticatorProperties);
+        authenticatorProperties.put(UAEPassAuthenticatorConstants.UAE.CLIENT_ID, CLIENT_ID);
+        Optional<AuthenticatorData> authenticatorData = uaePassAuthenticator.getAuthInitiationData
+                (mockAuthenticationContext);
+
+        Assert.assertTrue(authenticatorData.isPresent());
+        AuthenticatorData authenticatorDataObj = authenticatorData.get();
+
+        Assert.assertEquals(authenticatorDataObj.getName(),
+                UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME);
+        Assert.assertEquals(authenticatorDataObj.getI18nKey(), UAEPassAuthenticatorConstants.AUTHENTICATOR_I18N_KEY);
+        Assert.assertEquals(authenticatorDataObj.getDisplayName(),
+                UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_FRIENDLY_NAME);
+        Assert.assertEquals(authenticatorDataObj.getRequiredParams().size(),
+                2);
+        Assert.assertEquals(authenticatorDataObj.getPromptType(),
+                FrameworkConstants.AuthenticatorPromptType.INTERNAL_PROMPT);
+        Assert.assertTrue(authenticatorDataObj.getRequiredParams()
+                .contains(UAEPassAuthenticatorConstants.ACCESS_TOKEN_PARAM));
+        Assert.assertTrue(authenticatorDataObj.getRequiredParams()
+                .contains(UAEPassAuthenticatorConstants.ID_TOKEN_PARAM));
+        Assert.assertEquals(authenticatorDataObj.getAdditionalData()
+                .getAdditionalAuthenticationParams().get(UAEPassAuthenticatorConstants.CLIENT_ID_PARAM), CLIENT_ID);
+    }
+
+    @Test
+    public void testGetAuthInitiationData() {
+
+        when(mockAuthenticationContext.getExternalIdP()).thenReturn(externalIdPConfig);
+        when(externalIdPConfig.getIdPName())
+                .thenReturn(UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME);
+        when(mockAuthenticationContext.getAuthenticationRequest()).thenReturn(mockAuthenticationRequest);
+        when(mockAuthenticationContext.getProperty(
+                UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME +
+                        UAEPassAuthenticatorConstants.REDIRECT_URL_SUFFIX))
+                .thenReturn(REDIRECT_URL);
+        Optional<AuthenticatorData> authenticatorData = uaePassAuthenticator.getAuthInitiationData
+                (mockAuthenticationContext);
+
+        Assert.assertTrue(authenticatorData.isPresent());
+        AuthenticatorData authenticatorDataObj = authenticatorData.get();
+
+        Assert.assertEquals(authenticatorDataObj.getName(),
+                UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME);
+        Assert.assertEquals(authenticatorDataObj.getI18nKey(), UAEPassAuthenticatorConstants.AUTHENTICATOR_I18N_KEY);
+        Assert.assertEquals(authenticatorDataObj.getDisplayName(),
+                UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_FRIENDLY_NAME);
+        Assert.assertEquals(authenticatorDataObj.getRequiredParams().size(),
+                2);
+        Assert.assertEquals(authenticatorDataObj.getPromptType(),
+                FrameworkConstants.AuthenticatorPromptType.REDIRECTION_PROMPT);
+        Assert.assertTrue(authenticatorDataObj.getRequiredParams()
+                .contains(UAEPassAuthenticatorConstants.UAE.OAUTH2_GRANT_TYPE_CODE));
+        Assert.assertTrue(authenticatorDataObj.getRequiredParams()
+                .contains(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE));
+        Assert.assertEquals(authenticatorDataObj.getAdditionalData().getRedirectUrl(), REDIRECT_URL);
     }
 }

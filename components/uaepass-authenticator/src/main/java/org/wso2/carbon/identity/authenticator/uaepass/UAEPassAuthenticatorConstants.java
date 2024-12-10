@@ -24,6 +24,22 @@ package org.wso2.carbon.identity.authenticator.uaepass;
  */
 public class UAEPassAuthenticatorConstants {
 
+    public static final String AUTHENTICATOR_I18N_KEY = "authenticator.uaepass";
+    public static final String ACCESS_TOKEN_PARAM = "accessToken";
+    public static final String ID_TOKEN_PARAM = "idToken";
+    public static final String SESSION_DATA_KEY_PARAM = "sessionDataKey";
+    public static final String CLIENT_ID_PARAM = "clientId";
+    public static final String AUTHENTICATOR_MESSAGE = "authenticatorMessage";
+    public static final String REDIRECT_URL_SUFFIX = "_redirect_url";
+    public static final String STATE_PARAM_SUFFIX = "_state_param";
+    public static final String SCOPE_PARAM_SUFFIX = "_scope_param";
+    public static final String SCOPE = "scope";
+    public static final String REDIRECT_URL = "REDIRECT_URL";
+
+    private UAEPassAuthenticatorConstants() {
+
+    }
+
     public enum ErrorMessages {
 
         USER_ID_NOT_FOUND_IN_ID_TOKEN_SENT_BY_FEDERATED_IDP("UAEPass-65001",
@@ -49,7 +65,15 @@ public class UAEPassAuthenticatorConstants {
         UAEPASS_AUTHN_FAILED_ACCESS_TOKEN_BUILD_FAILURE("UAEPass-65011", "UAEPass Authentication" +
                 "Exception while building access token request with the request body"),
         UAEPASS_AUTHN_FAILED_ABSOLUTE_URL_BUILD_FAILURE("UAEPass-65012", "Error occurred while " +
-                "extracting the absolute public URL from the browser");
+                "extracting the absolute public URL from the browser"),
+        ACCESS_TOKEN_EMPTY("UAEPass-65013", "Access token is empty."),
+        RETRIEVING_AUTHENTICATOR_PROPERTIES_FAILED("UAEPass-65014", "Error while retrieving properties. "
+                + "Authenticator properties cannot be null."),
+        USER_ID_NOT_FOUND_IN_ID_TOKEN("UAEPass-65015", "Cannot find the userId from the id_token sent "
+                + "by the federated IDP."),
+        NO_REGISTERED_IDP_FOR_ISSUER("UAEPass-65016", "No registered IdP found for the issuer: %s"),
+        JWT_TOKEN_VALIDATION_FAILED("UAEPass-65017", "Error while validating the ID token."),
+        ID_TOKEN_AUD_VALIDATION_FAILED("UAEPass-65018", "Invalid audience in the ID token.");
 
         private final String code;
         private final String message;

@@ -28,7 +28,7 @@
     <groupId>org.wso2.carbon.identity.uaepass.outbound</groupId>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>identity-outbound-auth-uaepass</artifactId>
-    <version>1.0.7-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>UAEPass Outbound Authenticator</name>
     <url>http://wso2.org</url>
@@ -123,6 +123,11 @@
                 <groupId>org.wso2.orbit.com.nimbusds</groupId>
                 <artifactId>nimbus-jose-jwt</artifactId>
                 <version>${nimbusds.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.outbound.auth.oidc</groupId>
+                <artifactId>org.wso2.carbon.identity.application.authenticator.oidc</artifactId>
+                <version>${identity.outbound.auth.oidc.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.jacoco</groupId>
@@ -320,6 +325,10 @@
         <maven.compiler.plugin.version>2.3.1</maven.compiler.plugin.version>
         <maven.findbugs.plugin.version>3.0.4</maven.findbugs.plugin.version>
         <maven.findbugsplugin.exclude.file>findbugs-exclude-filter.xml</maven.findbugsplugin.exclude.file>
+        <identity.outbound.auth.oidc.version>5.12.3</identity.outbound.auth.oidc.version>
+        <identity.outbound.auth.oidc.version.range>[5.12.3, 6.0.0)</identity.outbound.auth.oidc.version.range>
+        <carbon.identity.inbound.oauth.package.import.version.range>[6.0.0, 8.0.0)
+        </carbon.identity.inbound.oauth.package.import.version.range>
     </properties>
 
     <modules>
