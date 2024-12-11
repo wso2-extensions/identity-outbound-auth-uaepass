@@ -19,7 +19,10 @@
 
 package org.wso2.carbon.identity.authenticator.uaepass;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.util.JSONObjectUtils;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import net.minidev.json.JSONArray;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
@@ -37,13 +40,23 @@ import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.model.AdditionalData;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatorData;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatorMessage;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
+import org.wso2.carbon.identity.application.authenticator.oidc.NativeSDKBasedFederatedOAuthClientResponse;
+import org.wso2.carbon.identity.application.authenticator.oidc.util.OIDCTokenValidationUtil;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.application.common.model.IdentityProviderProperty;
 import org.wso2.carbon.identity.application.common.model.Property;
+import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
 import org.wso2.carbon.identity.authenticator.uaepass.internal.UAEPassDataHolder;
@@ -52,6 +65,10 @@ import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
+import org.wso2.carbon.idp.mgt.IdentityProviderManager;
+import org.wso2.carbon.idp.mgt.util.IdPManagementConstants;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -70,12 +87,21 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ACCESS_TOKEN_PARAM;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATOR_I18N_KEY;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATOR_MESSAGE;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ID_TOKEN_PARAM;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_GRANT_TYPE_CODE;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE;
 
 /**
  * The UAEPassAuthenticator class contains all the functional tasks handled by the authenticator with UAEPass IdP and
@@ -99,7 +125,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     @Override
     public boolean canHandle(HttpServletRequest request) {
 
-        return UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE.equals(getLoginType(request));
+        return isNativeSDKBasedFederationCall(request) ||
+                UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE.equals(getLoginType(request));
     }
 
     /**
@@ -146,7 +173,11 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     @Override
     public String getContextIdentifier(HttpServletRequest request) {
 
-        String state = request.getParameter(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE);
+        if (isAPIBasedAuthenticationFlow(request, null)) {
+            return request.getParameter(UAEPassAuthenticatorConstants.SESSION_DATA_KEY_PARAM);
+        }
+
+        String state = request.getParameter(OAUTH2_PARAM_STATE);
         if (StringUtils.isNotBlank(state)) {
             return state.split(",")[0];
         } else {
@@ -251,12 +282,14 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 }
                 String clientId = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CLIENT_ID);
                 String authorizationEP = getAuthorizeUrl(envUAEPass);
-                String callBackUrl = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
-                String state = context.getContextIdentifier() + "," + UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE;
+                String callBackUrl = getCallbackUrl(request, authenticatorProperties, context);
+
+                String state = getStateParameter(request, context);
+                context.setProperty(getName() + UAEPassAuthenticatorConstants.STATE_PARAM_SUFFIX, state);
 
                 OAuthClientRequest authzRequest = OAuthClientRequest.authorizationLocation(authorizationEP).
                         setClientId(clientId).setRedirectURI(callBackUrl).
-                        setResponseType(UAEPassAuthenticatorConstants.UAE.OAUTH2_GRANT_TYPE_CODE).setState(state).
+                        setResponseType(OAUTH2_GRANT_TYPE_CODE).setState(state).
                         buildQueryMessage();
 
                 if (LOG.isDebugEnabled()) {
@@ -267,32 +300,42 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 if (StringUtils.isNotBlank(authenticatorProperties.get(UAEPassAuthenticatorConstants.
                         UAE.QUERY_PARAMS))) {
                     loginPage = processAdditionalQueryParamSeperation(authenticatorProperties, loginPage,
-                            request.getParameterMap());
+                            request.getParameterMap(), context);
                 } else {
                     Map<String, String> paramMap = new HashMap<>();
                     paramMap.put(UAEPassAuthenticatorConstants.UAE.ACR_VALUES,
                             UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_ACR_VALUES);
                     paramMap.put(UAEPassAuthenticatorConstants.UAE.SCOPE,
                             UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
+                    addScopeToContext(context, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
                     loginPage = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
                 }
 
+                context.setProperty(getName() + UAEPassAuthenticatorConstants.REDIRECT_URL_SUFFIX, loginPage);
                 response.sendRedirect(loginPage);
             } else {
-                throw new AuthenticationFailedException("Error while retrieving properties. "
-                        + "Authenticator properties cannot be null.");
+                setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages
+                        .RETRIEVING_AUTHENTICATOR_PROPERTIES_FAILED, context);
+                throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages
+                        .RETRIEVING_AUTHENTICATOR_PROPERTIES_FAILED.getMessage());
             }
 
         } catch (UAEPassAuthnFailedException e) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS, context);
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getCode(), UAEPassAuthenticatorConstants.
                     ErrorMessages.AUTHENTICATION_FAILED_PROCESSING_ADDITIONAL_QUERY_PARAMS.getMessage(), e);
         } catch (IOException e) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_ENV_SELECTION, context);
             LOG.error("Authorization request building failed.");
             throw new AuthenticationFailedException(
                     UAEPassAuthenticatorConstants.ErrorMessages.AUTHENTICATION_FAILED_ENV_SELECTION.getCode(),
                     UAEPassAuthenticatorConstants.ErrorMessages.AUTHENTICATION_FAILED_ENV_SELECTION.getMessage(), e);
         } catch (OAuthSystemException e) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE, context);
             LOG.error("Unable to build the request with compulsory query parameters.");
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_COMPULSORY_QUERY_PARAM_FAILURE.getCode(), UAEPassAuthenticatorConstants.
@@ -313,15 +356,22 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                                                  AuthenticationContext context) throws AuthenticationFailedException {
 
         try {
-            OAuthAuthzResponse authzResponse = OAuthAuthzResponse.oauthCodeAuthzResponse(request);
-            OAuthClientRequest accessTokenRequest = getAccessTokenRequest(context, authzResponse);
-            OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
-            OAuthClientResponse oAuthResponse = getOAuthResponse(oAuthClient, accessTokenRequest);
+            OAuthClientResponse oAuthResponse;
+            if (isTrustedTokenIssuer(context) && isNativeSDKBasedFederationCall(request)) {
+                oAuthResponse = getTokensForNativeAPIBasedAuthCall(request, context);
+            } else {
+                OAuthAuthzResponse authzResponse = OAuthAuthzResponse.oauthCodeAuthzResponse(request);
+                OAuthClientRequest accessTokenRequest = getAccessTokenRequest(context, authzResponse);
+                OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
+                oAuthResponse = getOAuthResponse(oAuthClient, accessTokenRequest);
+            }
 
             String accessToken = oAuthResponse.getParam(UAEPassAuthenticatorConstants.UAE.ACCESS_TOKEN);
             if (StringUtils.isBlank(accessToken)) {
-                LOG.error("Access token is empty.");
-                throw new AuthenticationFailedException("Access token is empty.");
+                setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.
+                        ErrorMessages.ACCESS_TOKEN_EMPTY, context);
+                throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.
+                        ErrorMessages.ACCESS_TOKEN_EMPTY.getMessage());
             }
 
             String idToken = oAuthResponse.getParam(UAEPassAuthenticatorConstants.UAE.ID_TOKEN);
@@ -348,8 +398,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                     forEach(entry -> buildClaimMappings(claims, entry, attributeSeparator));
 
             if (StringUtils.isBlank(authenticatedUserId)) {
-                throw new AuthenticationFailedException("Cannot find the userId from the id_token sent "
-                        + "by the federated IDP.");
+                setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                        USER_ID_NOT_FOUND_IN_ID_TOKEN, context);
+                throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                        USER_ID_NOT_FOUND_IN_ID_TOKEN.getMessage());
             }
             authenticatedUser = AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier
                     (authenticatedUserId);
@@ -357,15 +409,21 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             context.setSubject(authenticatedUser);
 
         } catch (UAEPassAuthnFailedException e) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE, context);
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE.getCode(), UAEPassAuthenticatorConstants.
                     ErrorMessages.AUTHENTICATION_FAILED_RETRIEVING_OAUTH_CLIENT_RESPONSE.getMessage(), e);
         } catch (UAEPassUserInfoFailedException e) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE, context);
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getCode(), UAEPassAuthenticatorConstants.
                     ErrorMessages.AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getMessage(), e);
         } catch (OAuthProblemException e) {
             LOG.error("OAuth authorize response failure.");
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                    AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE, context);
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getCode(), UAEPassAuthenticatorConstants.
                     ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
@@ -375,6 +433,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Logout initialization will be handled by this method. This includes the functionality to support
      * common-auth logout of the UAEPass.
+     * API based logout is not supported.
      *
      * @param request                 The request that is received by the authenticator.
      * @param response                Appends the logout redirect URI once logged out from authenticator.
@@ -386,6 +445,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     protected void initiateLogoutRequest(HttpServletRequest request, HttpServletResponse response,
                                          AuthenticationContext context) throws LogoutFailedException {
 
+        if (isAPIBasedAuthenticationFlow(request, context)) {
+            LOG.debug("API based logout flow is not supported.");
+            return;
+        }
         if (isLogoutEnabled(context)) {
             try {
                 Map<String, String> paramMap = new HashMap<>();
@@ -583,7 +646,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             String clientId = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CLIENT_ID);
             String clientSecret = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CLIENT_SECRET);
             String tokenEndPoint = getTokenUrl(envUAEPass);
-            String callbackUrl = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
+            String callbackUrl = getCallbackUrl(null, authenticatorProperties, context);
 
             accessTokenRequest = OAuthClientRequest.tokenLocation(tokenEndPoint).
                     setGrantType(GrantType.AUTHORIZATION_CODE).setClientId(clientId).setClientSecret(clientSecret).
@@ -690,7 +753,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      * @return The modified authorized URL appending the additional query params.
      */
     private String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String
-            loginPage, Map<String,String[]> requestParams) throws UAEPassAuthnFailedException {
+            loginPage, Map<String,String[]> requestParams, AuthenticationContext context)
+            throws UAEPassAuthnFailedException {
 
         String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
         additionalQueryParams = replaceDynamicParams(additionalQueryParams, requestParams);
@@ -711,6 +775,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                 paramMap.put(keyValuePairs[0], keyValuePairs[1]);
             }
         }
+        if (paramMap.containsKey(UAEPassAuthenticatorConstants.UAE.SCOPE)) {
+            addScopeToContext(context, paramMap.get(UAEPassAuthenticatorConstants.UAE.SCOPE));
+        }
         String finalAuthzUrl = null;
         try {
             String authzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
@@ -721,7 +788,9 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             if (!(authzUrl.contains(UAEPassAuthenticatorConstants.UAE.SCOPE))) {
                 paramMap.put(UAEPassAuthenticatorConstants.UAE.SCOPE,
                         UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
+                addScopeToContext(context, UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.DEFAULT_SCOPES);
             }
+
             finalAuthzUrl = FrameworkUtils.buildURLWithQueryParams(loginPage, paramMap);
         } catch (IllegalArgumentException | UnsupportedEncodingException e) {
             LOG.error("Authorize URL creation failed due to an issue of additional query parameters.");
@@ -1011,5 +1080,257 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     private String getFileConfigValue(String fileConfigKey) {
 
         return getAuthenticatorConfig().getParameterMap().get(fileConfigKey);
+    }
+
+    @Override
+    public boolean isAPIBasedAuthenticationSupported() {
+
+        return true;
+    }
+
+    /**
+     * This method is responsible for obtaining authenticator-specific data needed to
+     * initialize the authentication process within the provided authentication context.
+     *
+     * @param context The authentication context containing information about the current authentication attempt.
+     * @return An {@code Optional} containing an {@code AuthenticatorData} object representing the initiation data.
+     * If the initiation data is available, it is encapsulated within the {@code Optional}; otherwise,
+     * an empty {@code Optional} is returned.
+     */
+    @Override
+    public Optional<AuthenticatorData> getAuthInitiationData(AuthenticationContext context) {
+
+        AuthenticatorData authenticatorData = new AuthenticatorData();
+        authenticatorData.setName(getName());
+        authenticatorData.setDisplayName(getFriendlyName());
+        authenticatorData.setI18nKey(getI18nKey());
+        String idpName = context.getExternalIdP().getIdPName();
+        authenticatorData.setIdp(idpName);
+
+        List<String> requiredParameterList = new ArrayList<>();
+        if (isTrustedTokenIssuer(context)) {
+            requiredParameterList.add(ACCESS_TOKEN_PARAM);
+            requiredParameterList.add(ID_TOKEN_PARAM);
+            authenticatorData.setPromptType(FrameworkConstants.AuthenticatorPromptType.INTERNAL_PROMPT);
+            authenticatorData.setAdditionalData(getAdditionalData(context, true));
+        } else {
+            requiredParameterList.add(OAUTH2_GRANT_TYPE_CODE);
+            requiredParameterList.add(OAUTH2_PARAM_STATE);
+            authenticatorData.setPromptType(FrameworkConstants.AuthenticatorPromptType.REDIRECTION_PROMPT);
+            authenticatorData.setAdditionalData(getAdditionalData(context, false));
+        }
+        authenticatorData.setRequiredParams(requiredParameterList);
+        if (context.getProperty(AUTHENTICATOR_MESSAGE) != null) {
+            authenticatorData.setMessage((AuthenticatorMessage) context.getProperty(AUTHENTICATOR_MESSAGE));
+        }
+
+        return Optional.of(authenticatorData);
+    }
+
+    /**
+     * Get the i18n key defined to represent the authenticator name.
+     *
+     * @return the 118n key.
+     */
+    @Override
+    public String getI18nKey() {
+
+        return AUTHENTICATOR_I18N_KEY;
+    }
+
+    private boolean isTrustedTokenIssuer(AuthenticationContext context) {
+
+        ExternalIdPConfig externalIdPConfig = context.getExternalIdP();
+        if (externalIdPConfig == null) {
+            return false;
+        }
+
+        IdentityProvider externalIdentityProvider = externalIdPConfig.getIdentityProvider();
+        if (externalIdentityProvider == null) {
+            return false;
+        }
+
+        IdentityProviderProperty[] identityProviderProperties = externalIdentityProvider.getIdpProperties();
+        for (IdentityProviderProperty identityProviderProperty : identityProviderProperties) {
+            if (IdPManagementConstants.IS_TRUSTED_TOKEN_ISSUER.equals(identityProviderProperty.getName())) {
+                return Boolean.parseBoolean(identityProviderProperty.getValue());
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isNativeSDKBasedFederationCall(HttpServletRequest request) {
+
+        return request.getParameter(ACCESS_TOKEN_PARAM) != null && request.getParameter(ID_TOKEN_PARAM) != null;
+    }
+
+    private AdditionalData getAdditionalData(AuthenticationContext context, boolean isNativeSDKBasedFederationCall) {
+
+        AdditionalData additionalData = new AdditionalData();
+        String currentAuthenticator = getName();
+
+        if (isNativeSDKBasedFederationCall) {
+            Map<String, String> additionalAuthenticationParams = new HashMap<>();
+
+            additionalAuthenticationParams.put(UAEPassAuthenticatorConstants.CLIENT_ID_PARAM,
+                    context.getAuthenticatorProperties().get(UAEPassAuthenticatorConstants.UAE.CLIENT_ID));
+            String scope = (String) context.getProperty(currentAuthenticator +
+                    UAEPassAuthenticatorConstants.SCOPE_PARAM_SUFFIX);
+            additionalAuthenticationParams.put(UAEPassAuthenticatorConstants.SCOPE, scope);
+            additionalData.setAdditionalAuthenticationParams(additionalAuthenticationParams);
+        } else {
+            additionalData.setRedirectUrl((String) context.getProperty(currentAuthenticator +
+                    UAEPassAuthenticatorConstants.REDIRECT_URL_SUFFIX));
+            Map<String, String> additionalAuthenticationParams = new HashMap<>();
+            String state = (String) context.getProperty(currentAuthenticator +
+                    UAEPassAuthenticatorConstants.STATE_PARAM_SUFFIX);
+            additionalAuthenticationParams.put(UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE, state);
+            additionalData.setAdditionalAuthenticationParams(additionalAuthenticationParams);
+        }
+        return additionalData;
+    }
+
+    private static void setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages errorMessage,
+                                                         AuthenticationContext context) {
+
+        AuthenticatorMessage authenticatorMessage = new AuthenticatorMessage(FrameworkConstants.
+                AuthenticatorMessageType.ERROR, errorMessage.
+                getCode(), errorMessage.getMessage(), null);
+        context.setProperty(AUTHENTICATOR_MESSAGE, authenticatorMessage);
+    }
+
+    private static void setAuthenticatorMessageToContext(AuthenticatorMessage message,
+                                                         AuthenticationContext context) {
+
+        context.setProperty(AUTHENTICATOR_MESSAGE, message);
+    }
+
+    private String getStateParameter(HttpServletRequest request, AuthenticationContext context) {
+
+        if (isAPIBasedAuthenticationFlow(request, context)) {
+            return UUID.randomUUID() + "," + UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE;
+        }
+
+        return context.getContextIdentifier() + "," + UAEPassAuthenticatorConstants.UAE.LOGIN_TYPE;
+    }
+
+    /**
+     * Returns the callback URL of the IdP Hub.
+     *
+     * @param authenticatorProperties Authentication properties configured in OIDC federated authenticator
+     *                                configuration.
+     * @param context                 Authentication context.
+     * @return If API based authn flow, returns the redirect URL from the authentication context. If not returns the
+     * callback URL configured in OIDC federated authenticator configuration and if it is empty returns
+     * /commonauth endpoint URL path as the default value.
+     */
+    private String getCallbackUrl(HttpServletRequest request, Map<String, String> authenticatorProperties,
+                                  AuthenticationContext context) {
+
+        if (isAPIBasedAuthenticationFlow(request, context)) {
+            return (String) context.getProperty(UAEPassAuthenticatorConstants.REDIRECT_URL);
+        }
+
+        return authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CALLBACK_URL);
+    }
+
+    private boolean isAPIBasedAuthenticationFlow(HttpServletRequest request, AuthenticationContext context) {
+
+        if (context != null) {
+            return Boolean.parseBoolean((String) context.getProperty(FrameworkConstants.IS_API_BASED));
+        }
+        return FrameworkUtils.isAPIBasedAuthenticationFlow(request);
+    }
+
+    /**
+     * Add scopes to the context to be used with App Native Authentication.
+     *
+     * @param context Authentication context.
+     * @param scope Space separated scopes.
+     */
+    private void addScopeToContext(AuthenticationContext context, String scope) {
+
+        if (StringUtils.isNotBlank(scope)) {
+            context.setProperty(getName() + UAEPassAuthenticatorConstants.SCOPE_PARAM_SUFFIX, scope);
+        }
+    }
+
+    private OAuthClientResponse getTokensForNativeAPIBasedAuthCall(HttpServletRequest request,
+                                                               AuthenticationContext context)
+            throws AuthenticationFailedException {
+
+        String idToken = request.getParameter(ID_TOKEN_PARAM);
+        String accessToken = request.getParameter(ACCESS_TOKEN_PARAM);
+        if (StringUtils.isNotBlank(idToken)) {
+            try {
+                validateJWTToken(context, idToken);
+            } catch (Exception e) {
+                setAuthenticatorMessageToContext(
+                        UAEPassAuthenticatorConstants.ErrorMessages.JWT_TOKEN_VALIDATION_FAILED,
+                        context);
+                throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                        JWT_TOKEN_VALIDATION_FAILED.getMessage(), e);
+            }
+        }
+        NativeSDKBasedFederatedOAuthClientResponse nativeSDKBasedFederatedOAuthClientResponse
+                = new NativeSDKBasedFederatedOAuthClientResponse();
+        nativeSDKBasedFederatedOAuthClientResponse.setAccessToken(accessToken);
+        nativeSDKBasedFederatedOAuthClientResponse.setIdToken(idToken);
+
+        return nativeSDKBasedFederatedOAuthClientResponse;
+    }
+
+    private void validateJWTToken(AuthenticationContext context, String idToken) throws AuthenticationFailedException,
+            IdentityOAuth2Exception, JOSEException, IdentityProviderManagementException, ParseException {
+
+        SignedJWT signedJWT = SignedJWT.parse(idToken);
+        JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+        validateAudience(context, claimsSet.getAudience());
+        OIDCTokenValidationUtil.validateIssuerClaim(claimsSet);
+        String tenantDomain = context.getTenantDomain();
+        String idpIdentifier = OIDCTokenValidationUtil.getIssuer(claimsSet);
+        IdentityProvider identityProvider = getIdentityProvider(idpIdentifier, tenantDomain);
+
+        if (identityProvider == null) {
+            String msg =  String.format(
+                    UAEPassAuthenticatorConstants.ErrorMessages.NO_REGISTERED_IDP_FOR_ISSUER.getCode(), idpIdentifier);
+            AuthenticatorMessage authenticatorMessage = new AuthenticatorMessage(
+                    FrameworkConstants.AuthenticatorMessageType.ERROR,
+                    UAEPassAuthenticatorConstants.ErrorMessages.NO_REGISTERED_IDP_FOR_ISSUER.getCode(),
+                    msg,
+                    null);
+            setAuthenticatorMessageToContext(authenticatorMessage, context);
+            throw new AuthenticationFailedException(msg);
+        }
+
+        OIDCTokenValidationUtil.validateSignature(signedJWT, identityProvider);
+    }
+
+    private void validateAudience(AuthenticationContext context, List<String> audience)
+            throws AuthenticationFailedException {
+
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+        String clientId = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.CLIENT_ID);
+        if (audience == null || !audience.contains(clientId)) {
+            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages
+                    .ID_TOKEN_AUD_VALIDATION_FAILED, context);
+            throw new AuthenticationFailedException(
+                    UAEPassAuthenticatorConstants.ErrorMessages.ID_TOKEN_AUD_VALIDATION_FAILED.getMessage());
+        }
+    }
+
+    private IdentityProvider getIdentityProvider(String jwtIssuer, String tenantDomain)
+            throws IdentityProviderManagementException {
+
+        IdentityProvider identityProvider;
+        identityProvider = IdentityProviderManager.getInstance().getIdPByMetadataProperty(
+                IdentityApplicationConstants.IDP_ISSUER_NAME, jwtIssuer, tenantDomain, false);
+
+        if (identityProvider == null) {
+            identityProvider = IdentityProviderManager.getInstance().getIdPByName(jwtIssuer, tenantDomain);
+        }
+
+        return identityProvider;
     }
 }
