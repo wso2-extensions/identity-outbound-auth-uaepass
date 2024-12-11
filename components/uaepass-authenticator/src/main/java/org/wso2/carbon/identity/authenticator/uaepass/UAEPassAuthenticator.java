@@ -88,6 +88,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
 
     private static final Log LOG = LogFactory.getLog(UAEPassAuthenticator.class);
     private static final String DYNAMIC_PARAMETER_LOOKUP_REGEX = "\\$\\{(\\w+)\\}";
+    private static final Pattern PATTERN = Pattern.compile(DYNAMIC_PARAMETER_LOOKUP_REGEX);
 
     /**
      * Checks whether the request and response can be handled by the authenticator.
@@ -662,8 +663,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
      */
     private String replaceDynamicParams(String queryString, Map<String,String[]> parameters) {
 
-        Pattern pattern = Pattern.compile(DYNAMIC_PARAMETER_LOOKUP_REGEX);
-        Matcher matcher = pattern.matcher(queryString);
+        Matcher matcher = PATTERN.matcher(queryString);
 
         while (matcher.find()) {
             String name = matcher.group(1);
