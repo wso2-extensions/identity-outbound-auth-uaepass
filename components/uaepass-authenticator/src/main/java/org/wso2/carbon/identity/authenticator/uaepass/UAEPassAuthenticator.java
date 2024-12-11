@@ -61,6 +61,8 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,6 +71,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -82,6 +87,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         implements FederatedApplicationAuthenticator {
 
     private static final Log LOG = LogFactory.getLog(UAEPassAuthenticator.class);
+    private static final String DYNAMIC_PARAMETER_LOOKUP_REGEX = "\\$\\{(\\w+)\\}";
+    private static final Pattern PATTERN = Pattern.compile(DYNAMIC_PARAMETER_LOOKUP_REGEX);
 
     /**
      * Checks whether the request and response can be handled by the authenticator.
@@ -259,7 +266,8 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
 
                 if (StringUtils.isNotBlank(authenticatorProperties.get(UAEPassAuthenticatorConstants.
                         UAE.QUERY_PARAMS))) {
-                    loginPage = processAdditionalQueryParamSeperation(authenticatorProperties, loginPage);
+                    loginPage = processAdditionalQueryParamSeperation(authenticatorProperties, loginPage,
+                            request.getParameterMap());
                 } else {
                     Map<String, String> paramMap = new HashMap<>();
                     paramMap.put(UAEPassAuthenticatorConstants.UAE.ACR_VALUES,
@@ -647,16 +655,45 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     }
 
     /**
+     * Replaces dynamic parameters in the query string with their corresponding values from the provided parameters map.
+     *
+     * @param queryString The query string containing dynamic parameters in the format ${parameterName}.
+     * @param parameters  A map of parameter names to their values.
+     * @return The query string with dynamic parameters replaced by their corresponding values.
+     */
+    private String replaceDynamicParams(String queryString, Map<String,String[]> parameters) {
+
+        Matcher matcher = PATTERN.matcher(queryString);
+
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            String value = parameters.containsKey(name) ? parameters.get(name)[0] : StringUtils.EMPTY;
+            try {
+                value = URLEncoder.encode(value, StandardCharsets.UTF_8.name());
+            } catch (UnsupportedEncodingException e) {
+                LOG.error(e.toString(),e);
+            }
+            queryString = queryString.replaceAll("\\$\\{" + name + "}", Matcher.quoteReplacement(value));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug ("interpretQueryString " + name + " <" + value + "> as <" + queryString + ">");
+            }
+        }
+        return queryString;
+    }
+
+    /**
      * This method is used to add additional parameters along with the authorize request.
      *
      * @param authenticatorProperties  The user input fields of the authenticator.
      * @param loginPage                Current authorize URL.
-     * @return authzUrl                Returns the modified authorized URL appending the additional query params.
+     * @param requestParams        The request parameters received by the authenticator.
+     * @return The modified authorized URL appending the additional query params.
      */
     private String processAdditionalQueryParamSeperation(Map<String, String> authenticatorProperties, String
-            loginPage) throws UAEPassAuthnFailedException {
+            loginPage, Map<String,String[]> requestParams) throws UAEPassAuthnFailedException {
 
         String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
+        additionalQueryParams = replaceDynamicParams(additionalQueryParams, requestParams);
         String[] splittedQueryParamsArr;
 
         if (additionalQueryParams.contains(",")) {
@@ -669,7 +706,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
 
         for (int i = 0; i < splittedQueryParamsArr.length; i++) {
             keyValuePairs = (splittedQueryParamsArr[i]).split("=");
-            paramMap.put(keyValuePairs[0], keyValuePairs[1]);
+            // Skip query parameters with empty values.
+            if (keyValuePairs.length > 1) {
+                paramMap.put(keyValuePairs[0], keyValuePairs[1]);
+            }
         }
         String finalAuthzUrl = null;
         try {
