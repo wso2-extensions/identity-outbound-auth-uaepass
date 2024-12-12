@@ -759,8 +759,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         while (matcher.find()) {
             String name = matcher.group(1);
             String value = runtimeParams.getOrDefault(name, StringUtils.EMPTY);
-            queryString = queryString.replaceAll("\\$authparam\\{" + name + "}",
-                    Matcher.quoteReplacement(value));
+            queryString = queryString.replaceAll("\\$authparam\\{" + name + "}", Matcher.quoteReplacement(value));
             if (LOG.isDebugEnabled()) {
                 LOG.debug ("interpretQueryString " + name + " <" + value + "> as <" + queryString + ">");
             }
