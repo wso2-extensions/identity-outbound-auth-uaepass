@@ -51,6 +51,7 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.authenticator.oidc.NativeSDKBasedFederatedOAuthClientResponse;
+import org.wso2.carbon.identity.application.authenticator.oidc.OIDCAuthenticatorConstants;
 import org.wso2.carbon.identity.application.authenticator.oidc.util.OIDCTokenValidationUtil;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
@@ -78,8 +79,6 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -113,8 +112,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         implements FederatedApplicationAuthenticator {
 
     private static final Log LOG = LogFactory.getLog(UAEPassAuthenticator.class);
-    private static final String DYNAMIC_PARAMETER_LOOKUP_REGEX = "\\$\\{(\\w+)\\}";
-    private static final Pattern PATTERN = Pattern.compile(DYNAMIC_PARAMETER_LOOKUP_REGEX);
+    private static final String DYNAMIC_PARAMS_LOOKUP_REGEX = "\\$\\{(\\w+)\\}";
+    private static final Pattern PATTERN = Pattern.compile(DYNAMIC_PARAMS_LOOKUP_REGEX);
+    private static final Pattern AUTH_PARAM_PATTERN = Pattern.compile(
+            OIDCAuthenticatorConstants.DYNAMIC_AUTH_PARAMS_LOOKUP_REGEX);
 
     /**
      * Checks whether the request and response can be handled by the authenticator.
@@ -720,23 +721,46 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     /**
      * Replaces dynamic parameters in the query string with their corresponding values from the provided parameters map.
      *
+     * @param context     Authentication context.
      * @param queryString The query string containing dynamic parameters in the format ${parameterName}.
      * @param parameters  A map of parameter names to their values.
      * @return The query string with dynamic parameters replaced by their corresponding values.
      */
-    private String replaceDynamicParams(String queryString, Map<String,String[]> parameters) {
+    private String resolveDynamicParams(AuthenticationContext context, String queryString,
+                                        Map<String, String[]> parameters) {
 
+        if (queryString.contains(OIDCAuthenticatorConstants.AUTH_PARAM)) {
+            queryString = resolveAuthenticatorParams(context, queryString);
+        }
         Matcher matcher = PATTERN.matcher(queryString);
-
         while (matcher.find()) {
             String name = matcher.group(1);
             String value = parameters.containsKey(name) ? parameters.get(name)[0] : StringUtils.EMPTY;
-            try {
-                value = URLEncoder.encode(value, StandardCharsets.UTF_8.name());
-            } catch (UnsupportedEncodingException e) {
-                LOG.error(e.toString(),e);
-            }
             queryString = queryString.replaceAll("\\$\\{" + name + "}", Matcher.quoteReplacement(value));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug ("interpretQueryString " + name + " <" + value + "> as <" + queryString + ">");
+            }
+        }
+        return queryString;
+    }
+
+    /**
+     * To capture the additional authenticator params from the adaptive script and interpret the query string with
+     * additional params.
+     *
+     * @param context     Authentication context.
+     * @param queryString the query string with additional param.
+     * @return interpreted query string.
+     */
+    private String resolveAuthenticatorParams(AuthenticationContext context, String queryString) {
+
+        Matcher matcher = AUTH_PARAM_PATTERN.matcher(queryString);
+        Map<String, String> runtimeParams = getRuntimeParams(context);
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            String value = runtimeParams.getOrDefault(name, StringUtils.EMPTY);
+            queryString = queryString.replaceAll("\\$authparam\\{" + name + "}",
+                    Matcher.quoteReplacement(value));
             if (LOG.isDebugEnabled()) {
                 LOG.debug ("interpretQueryString " + name + " <" + value + "> as <" + queryString + ">");
             }
@@ -757,7 +781,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
             throws UAEPassAuthnFailedException {
 
         String additionalQueryParams = authenticatorProperties.get(UAEPassAuthenticatorConstants.UAE.QUERY_PARAMS);
-        additionalQueryParams = replaceDynamicParams(additionalQueryParams, requestParams);
+        additionalQueryParams = resolveDynamicParams(context, additionalQueryParams, requestParams);
         String[] splittedQueryParamsArr;
 
         if (additionalQueryParams.contains(",")) {
