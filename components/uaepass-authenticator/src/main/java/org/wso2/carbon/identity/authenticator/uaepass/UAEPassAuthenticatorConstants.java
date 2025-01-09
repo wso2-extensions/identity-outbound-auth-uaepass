@@ -35,6 +35,13 @@ public class UAEPassAuthenticatorConstants {
     public static final String SCOPE_PARAM_SUFFIX = "_scope_param";
     public static final String SCOPE = "scope";
     public static final String REDIRECT_URL = "REDIRECT_URL";
+    public static final String AUTHENTICATION_ERROR_PAGE_URL = "authenticationendpoint/uaePassError.jsp";
+    public static final String AUTHENTICATORS_QUERY_PARAM = "&authenticators=";
+    public static final String ERROR_USER_CANCELLED_QUERY_PARAMS =
+            "&authFailure=true&authFailureMsg=cancelled.on.app";
+    public static final String ERROR_INVALID_REQUEST_QUERY_PARAMS =
+            "&authFailure=true&authFailureMsg=invalid.request";
+    public static final String CANCELLED_ON_APP_ERROR = "cancelledOnApp";
 
     private UAEPassAuthenticatorConstants() {
 

@@ -38,6 +38,7 @@ import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
@@ -57,6 +58,7 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.IdentityProviderProperty;
 import org.wso2.carbon.identity.application.common.model.Property;
+import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassAuthnFailedException;
 import org.wso2.carbon.identity.authenticator.uaepass.exception.UAEPassUserInfoFailedException;
@@ -97,8 +99,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ACCESS_TOKEN_PARAM;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATION_ERROR_PAGE_URL;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATORS_QUERY_PARAM;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATOR_I18N_KEY;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.AUTHENTICATOR_MESSAGE;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.CANCELLED_ON_APP_ERROR;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ERROR_INVALID_REQUEST_QUERY_PARAMS;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ERROR_USER_CANCELLED_QUERY_PARAMS;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ID_TOKEN_PARAM;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_GRANT_TYPE_CODE;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE;
@@ -218,6 +225,76 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
         configProperties.add(isStagingEnv);
 
         return configProperties;
+    }
+
+    @Override
+    public AuthenticatorFlowStatus process(HttpServletRequest request,
+                                           HttpServletResponse response, AuthenticationContext context)
+            throws AuthenticationFailedException, LogoutFailedException {
+
+        // If a logout flow.
+        if (context.isLogoutRequest()) {
+            return processLogout(request, response, context);
+        }
+        // If an authentication flow.
+        if ((!canHandle(request)
+                || Boolean.TRUE.equals(request.getAttribute(FrameworkConstants.REQ_ATTR_HANDLED)))) {
+            if (getName().equals(context.getProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR))) {
+                context.setRetrying(true);
+            }
+            initiateAuthenticationRequest(request, response, context);
+            context.setCurrentAuthenticator(getName());
+            context.setRetrying(false);
+            return AuthenticatorFlowStatus.INCOMPLETE;
+        }
+        try {
+            processAuthenticationResponse(request, response, context);
+            if (getName().equals(context.getProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR))) {
+                return AuthenticatorFlowStatus.INCOMPLETE;
+            }
+            request.setAttribute(FrameworkConstants.REQ_ATTR_HANDLED, true);
+            context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, null);
+            publishAuthenticationStepAttempt(request, context, context.getSubject(), true);
+            return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+
+        } catch (AuthenticationFailedException e) {
+            publishAuthenticationStepAttemptFailure(request, context, e.getUser(), e.getErrorCode());
+            request.setAttribute(FrameworkConstants.REQ_ATTR_HANDLED, true);
+            // Decide whether we need to redirect to the login page to retry authentication.
+            boolean sendToMultiOptionPage =
+                    isStepHasMultiOption(context) && isRedirectToMultiOptionPageOnFailure();
+            context.setSendToMultiOptionPage(sendToMultiOptionPage);
+            context.setRetrying(retryAuthenticationEnabled());
+            context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
+            throw e;
+        }
+    }
+
+
+    private AuthenticatorFlowStatus processLogout(HttpServletRequest request, HttpServletResponse response,
+                                                  AuthenticationContext context) throws LogoutFailedException {
+        try {
+            if (!canHandle(request)) {
+                context.setCurrentAuthenticator(getName());
+                initiateLogoutRequest(request, response, context);
+                return AuthenticatorFlowStatus.INCOMPLETE;
+            } else {
+                processLogoutResponse(request, response, context);
+                return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+            }
+        } catch (UnsupportedOperationException e) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Ignoring UnsupportedOperationException.", e);
+            }
+            return AuthenticatorFlowStatus.SUCCESS_COMPLETED;
+        }
+    }
+
+    private void publishAuthenticationStepAttemptFailure(HttpServletRequest request, AuthenticationContext context,
+                                                         User user, String errorCode) {
+
+        context.setAnalyticsData(FrameworkConstants.AnalyticsData.CURRENT_AUTHENTICATOR_ERROR_CODE, errorCode);
+        publishAuthenticationStepAttempt(request, context, user, false);
     }
 
     /**
@@ -387,9 +464,39 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
             LOG.error("OAuth authorize response failure.");
             setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE, context);
+            if (e.getMessage().contains(CANCELLED_ON_APP_ERROR)) {
+                context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
+                redirectToErrorPage(response, ERROR_USER_CANCELLED_QUERY_PARAMS);
+            } else {
+                context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
+                redirectToErrorPage(response, ERROR_INVALID_REQUEST_QUERY_PARAMS);
+            }
+        }
+    }
+
+    private void redirectToErrorPage(HttpServletResponse response, String errorMessage)
+            throws AuthenticationFailedException {
+
+        try {
+            String queryString = AUTHENTICATORS_QUERY_PARAM + getName() + errorMessage;
+            String errorPage = getErrorPageURL();
+            String url = FrameworkUtils.appendQueryParamsStringToUrl(errorPage, queryString);
+            response.sendRedirect(url);
+        } catch (IOException e) {
             throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
                     AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getCode(), UAEPassAuthenticatorConstants.
                     ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
+        }
+    }
+
+
+    private String getErrorPageURL() throws AuthenticationFailedException {
+
+        try {
+            return ServiceURLBuilder.create().addPath(AUTHENTICATION_ERROR_PAGE_URL)
+                    .build().getAbsolutePublicURL();
+        } catch (URLBuilderException e) {
+            throw new AuthenticationFailedException("Error building UAE Pass error page URL", e);
         }
     }
 
