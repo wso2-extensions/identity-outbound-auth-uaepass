@@ -42,6 +42,7 @@ public class UAEPassAuthenticatorConstants {
     public static final String ERROR_INVALID_REQUEST_QUERY_PARAMS =
             "&authFailure=true&authFailureMsg=invalid.request";
     public static final String CANCELLED_ON_APP_ERROR = "cancelledOnApp";
+    public static final String INVALID_REQUEST_ERROR = "invalid_request";
 
     private UAEPassAuthenticatorConstants() {
 

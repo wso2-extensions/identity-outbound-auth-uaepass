@@ -107,6 +107,7 @@ import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticato
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ERROR_INVALID_REQUEST_QUERY_PARAMS;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ERROR_USER_CANCELLED_QUERY_PARAMS;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.ID_TOKEN_PARAM;
+import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.INVALID_REQUEST_ERROR;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_GRANT_TYPE_CODE;
 import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticatorConstants.UAE.OAUTH2_PARAM_STATE;
 
@@ -462,14 +463,18 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
                     ErrorMessages.AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getMessage(), e);
         } catch (OAuthProblemException e) {
             LOG.error("OAuth authorize response failure.");
-            setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
-                    AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE, context);
             if (e.getMessage().contains(CANCELLED_ON_APP_ERROR)) {
                 context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
                 redirectToErrorPage(response, ERROR_USER_CANCELLED_QUERY_PARAMS);
-            } else {
+            } else if (e.getMessage().contains(INVALID_REQUEST_ERROR)) {
                 context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
                 redirectToErrorPage(response, ERROR_INVALID_REQUEST_QUERY_PARAMS);
+            } else {
+                setAuthenticatorMessageToContext(UAEPassAuthenticatorConstants.ErrorMessages.
+                        AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE, context);
+                throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
+                        AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getCode(), UAEPassAuthenticatorConstants.
+                        ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
             }
         }
     }
@@ -483,9 +488,7 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
             String url = FrameworkUtils.appendQueryParamsStringToUrl(errorPage, queryString);
             response.sendRedirect(url);
         } catch (IOException e) {
-            throw new AuthenticationFailedException(UAEPassAuthenticatorConstants.ErrorMessages.
-                    AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getCode(), UAEPassAuthenticatorConstants.
-                    ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
+            throw new AuthenticationFailedException("Error redirecting to the error page.", e);
         }
     }
 
