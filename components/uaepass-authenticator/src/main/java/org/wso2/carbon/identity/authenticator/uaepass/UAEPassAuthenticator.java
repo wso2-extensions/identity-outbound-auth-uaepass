@@ -38,6 +38,7 @@ import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
@@ -52,7 +53,6 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.authenticator.oidc.NativeSDKBasedFederatedOAuthClientResponse;
 import org.wso2.carbon.identity.application.authenticator.oidc.OIDCAuthenticatorConstants;
-import org.wso2.carbon.identity.application.authenticator.oidc.OpenIDConnectAuthenticator;
 import org.wso2.carbon.identity.application.authenticator.oidc.util.OIDCTokenValidationUtil;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
@@ -75,7 +75,6 @@ import org.wso2.carbon.idp.mgt.util.IdPManagementConstants;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -117,7 +116,7 @@ import static org.wso2.carbon.identity.authenticator.uaepass.UAEPassAuthenticato
  * commonauthLogout of the UAEPAss, claim mapping via both id token and user info, UAEPAss Environment
  * selection (Staging / Production), and obtaining user input data.
  */
-public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
+public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         implements FederatedApplicationAuthenticator {
 
     private static final Log LOG = LogFactory.getLog(UAEPassAuthenticator.class);
@@ -159,6 +158,45 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
     public String getName() {
 
         return UAEPassAuthenticatorConstants.UAE.FEDERATED_IDP_COMPONENT_NAME;
+    }
+
+    /**
+     * Returns the claim dialect URL.
+     * Since authenticator supports OIDC, the dialect URL is OIDC dialect.
+     *
+     * @return String  The dialect which is supposed to map UAEPass claims.
+     */
+    @Override
+    public String getClaimDialectURI() {
+
+        return UAEPassAuthenticatorConstants.UAEPassRuntimeConstants.OIDC_DIALECT;
+    }
+
+    /**
+     * Returns a unique string to identify each request and response separately.
+     * This contains the session id, processed by the WSO2 IS.
+     *
+     * @param request  The request that is received by the authenticator.
+     * @return String  Returns the state parameter value that is carried by the request.
+     */
+    @Override
+    public String getContextIdentifier(HttpServletRequest request) {
+
+        if (isAPIBasedAuthenticationFlow(request, null)) {
+            return request.getParameter(UAEPassAuthenticatorConstants.SESSION_DATA_KEY_PARAM);
+        }
+
+        String state = request.getParameter(OAUTH2_PARAM_STATE);
+        if (StringUtils.isNotBlank(state)) {
+            return state.split(",")[0];
+        } else {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("A unique identifier cannot be issued for both Request and Response. " +
+                        "ContextIdentifier is NULL.");
+            }
+
+            return null;
+        }
     }
 
     /**
@@ -549,6 +587,24 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
             }
         } else {
             super.initiateLogoutRequest(request, response, context);
+        }
+    }
+
+    /**
+     * After a successful logout, WSO2 IS returns this response.
+     * Contains the details about the SP.
+     *
+     * @param request   The request that is received by the authenticator.
+     * @param response  The response that is received to the authenticator.
+     * @param context   The Authentication context received by authenticator.
+     */
+    @Override
+    protected void processLogoutResponse(HttpServletRequest request, HttpServletResponse response,
+                                         AuthenticationContext context) {
+
+        if (LOG.isDebugEnabled()) {
+                LOG.debug("Handled logout response from service provider " + context.getServiceProviderName() +
+                        " in tenant domain " + context.getTenantDomain());
         }
     }
 
@@ -1157,6 +1213,12 @@ public class UAEPassAuthenticator extends OpenIDConnectAuthenticator
     private String getFileConfigValue(String fileConfigKey) {
 
         return getAuthenticatorConfig().getParameterMap().get(fileConfigKey);
+    }
+
+    @Override
+    public boolean isAPIBasedAuthenticationSupported() {
+
+        return true;
     }
 
     /**
