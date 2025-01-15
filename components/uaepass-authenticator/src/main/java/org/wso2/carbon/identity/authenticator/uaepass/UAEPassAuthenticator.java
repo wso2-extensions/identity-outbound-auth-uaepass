@@ -530,7 +530,6 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
         }
     }
 
-
     private String getErrorPageURL() throws AuthenticationFailedException {
 
         try {
