@@ -501,10 +501,10 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                     ErrorMessages.AUTHENTICATION_FAILED_ACCESS_TOKEN_REQUEST_FAILURE.getMessage(), e);
         } catch (OAuthProblemException e) {
             LOG.error("OAuth authorize response failure.");
-            if (e.getMessage().contains(CANCELLED_ON_APP_ERROR)) {
+            if (isRedirectURLNotEmpty() && e.getMessage().contains(CANCELLED_ON_APP_ERROR)) {
                 context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
                 redirectToErrorPage(response, ERROR_USER_CANCELLED_QUERY_PARAMS);
-            } else if (e.getMessage().contains(INVALID_REQUEST_ERROR)) {
+            } else if (isRedirectURLNotEmpty() && e.getMessage().contains(INVALID_REQUEST_ERROR)) {
                 context.setProperty(FrameworkConstants.LAST_FAILED_AUTHENTICATOR, getName());
                 redirectToErrorPage(response, ERROR_INVALID_REQUEST_QUERY_PARAMS);
             } else {
@@ -515,6 +515,11 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
                         ErrorMessages.AUTHENTICATION_FAILED_AUTHORIZED_RESPONSE_FAILURE.getMessage(), e);
             }
         }
+    }
+
+    private boolean isRedirectURLNotEmpty() {
+
+        return !isFileConfigEmpty(AUTHENTICATION_ERROR_PAGE_URL);
     }
 
     private void redirectToErrorPage(HttpServletResponse response, String errorMessage)
@@ -533,7 +538,7 @@ public class UAEPassAuthenticator extends AbstractApplicationAuthenticator
     private String getErrorPageURL() throws AuthenticationFailedException {
 
         try {
-            return ServiceURLBuilder.create().addPath(AUTHENTICATION_ERROR_PAGE_URL)
+            return ServiceURLBuilder.create().addPath(getFileConfigValue(AUTHENTICATION_ERROR_PAGE_URL))
                     .build().getAbsolutePublicURL();
         } catch (URLBuilderException e) {
             throw new AuthenticationFailedException("Error building UAE Pass error page URL", e);

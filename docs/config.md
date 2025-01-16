@@ -28,6 +28,7 @@ UAEPassPRODAuthzEndpoint = "https://id.uaepass.ae/idshub/authorize"
 UAEPassPRODUserInfoEndpoint = "https://id.uaepass.ae/idshub/userinfo"
 UAEPassPRODTokenEndpoint = "https://id.uaepass.ae/idshub/token"
 UAEPassPRODLogoutEndpoint = "https://id.uaepass.ae/idshub/logout"
+UAEPassAuthenticationEndpointErrorPage = "authenticationendpoint/uaePassError.jsp"
 ```
 
 The [documentation](https://docs.uaepass.ae/guides/authentication/web-application/endpoints) for the UAEPass then 
