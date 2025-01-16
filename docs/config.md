@@ -3,17 +3,17 @@ To use the UAEPass authenticator with WSO2 Identity Server, first you need to co
 WSO2 Identity Server. The following steps provide instructions on how to configure the UAEPass authenticator with 
 WSO2 Identity Server using a sample app.
 
-In order to test the approach, First an end user account should be registered with the UAEPass staging environment 
-and the end user should have to download the UAEPass [mobile app](https://docs.uaepass.ae/resources/staging-apps) for 
-Staging.
+## Prerequisites
 
-After deploying the UAEPass Authenticator to WSO2 IS, the Authenticator can be configured from the 
-WSO2 IS Console.
+1. Download the UAEPass [mobile app](https://docs.uaepass.ae/resources/staging-apps) for
+   Staging.
+2. Register an end-user account with the UAEPass staging environment.
 
-The authorize endpoint, token endpoint, userinfo endpoint, and logout endpoint are hardcoded in the source 
-code for both staging and production. However, users can update these default endpoints by modifying the 
-`deployment.toml` file as follows with the necessary parameters. If a user prefers to add the following configurations, 
-the endpoint's default configurations may be overridden.
+## Configuring the UAEPass Authenticator
+
+1. Download the UAEPass Authenticator from the [WSO2 Store](https://store.wso2.com/connector/identity-outbound-auth-uaepass).
+2. Copy the downloaded JAR file to the `<IS_HOME>/repository/components/dropins` directory.
+3. Add the following configurations to the `deployment.toml` file.
 
 ```toml
 [[authentication.custom_authenticator]]
@@ -28,32 +28,60 @@ UAEPassPRODAuthzEndpoint = "https://id.uaepass.ae/idshub/authorize"
 UAEPassPRODUserInfoEndpoint = "https://id.uaepass.ae/idshub/userinfo"
 UAEPassPRODTokenEndpoint = "https://id.uaepass.ae/idshub/token"
 UAEPassPRODLogoutEndpoint = "https://id.uaepass.ae/idshub/logout"
+
+```
+The [documentation](https://docs.uaepass.ae/guides/authentication/web-application/endpoints) for the UAEPass include information regarding above endpoints.
+
+To enable error redirection to a custom error page (available in v1.1.3 or later), add the following to the `deployment.toml` file.
+
+```toml
+[[authentication.custom_authenticator]]
 UAEPassAuthenticationEndpointErrorPage = "authenticationendpoint/uaePassError.jsp"
 ```
+## Configuring UAEPass in the WSO2 IS Console
 
-The [documentation](https://docs.uaepass.ae/guides/authentication/web-application/endpoints) for the UAEPass then 
-include information regarding above endpoints.
+### Identity Server 7.0.0 and later
 
-Once Identity Server restarts, the bellow configurations will be getting reflected into `application-authentication.xml` 
-file located in the `<IS-HOME>/repository/conf/identity` directory from the above toml file 
+![alt text](images/ConnectorPage.png)
 
-```xml
-   <AuthenticatorConfig name="UAEPassAuthenticator" enabled="true">
-      <Parameter name="UAEPassSTGAuthzEndpoint">https://stg-id.uaepass.ae/idshub/authorize</Parameter>
-      <Parameter name="UAEPassSTGUserInfoEndpoint">https://stg-id.uaepass.ae/idshub/userinfo</Parameter>
-      <Parameter name="UAEPassSTGTokenEndpoint">https://stg-id.uaepass.ae/idshub/token</Parameter>
-      <Parameter name="UAEPassSTGLogoutEndpoint">https://stg-id.uaepass.ae/idshub/logout</Parameter>
-      <Parameter name="UAEPassPRODAuthzEndpoint">https://id.uaepass.ae/idshub/authorize</Parameter>
-      <Parameter name="UAEPassPRODUserInfoEndpoint">https://id.uaepass.ae/idshub/userinfo</Parameter>
-      <Parameter name="UAEPassPRODTokenEndpoint">https://id.uaepass.ae/idshub/token</Parameter>
-      <Parameter name="UAEPassPRODLogoutEndpoint">https://id.uaepass.ae/idshub/logout</Parameter>
-   </AuthenticatorConfig>
-```
+1. Log in to the WSO2 Identity Server Console.
+2. Navigate to `Connections` > `New Connection` > `Custom Connector` and create a new connector.
+3. Select the created connector and go to the Settings tab.
+4. Click `New Authenticator` and select `UAEPassAuthenticator`.
+5. Enter the required configuration details (as specified below).
 
-UAEPass has exposed the client id and client secret of a service provider that is accessible in staging environment. [2]
+![alt text](images/AuthenticatorCofiguration.png)
 
-According to the UAEPass Staging documentation, they have specified acr values for third-party SPs and provided default
-scopes. These acr values and scopes are carried along with the authorize request as the query parameters. The following 
+### Older versions of Identity Server
+1. Log in to the WSO2 Identity Server Management Console.
+2. Navigate to `Identity Providers` > `Add` and create a new identity provider.
+3. Go to the `Federated Authenticators` section and expand the `UAEPass Configuration` section.
+4. Enter the required configuration details (as specified below)
+
+![alt text](images/AuthenticatorCofigurationOld.png)
+
+## Configuration Details for UAEPass Authenticator
+
+### Required Fields
+
+#### Client ID
+The consumer key of the SP configured in UAEPass. For the staging environment, the client ID is `sandbox_stage`.
+
+#### Client secret
+The consumer secret of the SP configured in UAEPass. For the staging environment, the client secret is `sandbox_stage`.
+
+#### Callback URL
+Defines the redirect path after successful authentication is completed from the UAEPass. The default callback URL is 
+`https://localhost:9443/commonauth`.
+
+### Optional Fields
+
+#### Additional Query Parameters
+Allows you to include static or dynamic query parameters for the UAEPass authorization request.
+
+**Note:**
+According to the UAEPass Staging documentation, they have specified acr values for third-party SPs and provided default 
+scopes. These acr values and scopes are carried along with the authorize request as the query parameters. The following
 are the default acr values and scope.
 
 ```
@@ -64,33 +92,13 @@ scope: urn:uae:digitalid:profile:general
 If the user specifies an additional acr value or scope value in the Additional query parameter section, the default 
 values will be overridden.
 
-### _The WSO2 Console’s UI for authenticator section as follows_
-![alt text](images/WSO2-Console.png)
-
-#### Client ID
-The consumer key of the SP configured in UAEPass. Since “sndbox stage” their  staging environment’s consumer key.
-
-#### Client secret
-The consumer secret of the SP configured in UAEPass.
-
-#### Callback URL
-Defines the redirect path after successful authentication is completed from the UAEPass. (The authorization code of the
-UAEPass will be sent to the callback URL.)
-
-Note :
-Additional query parameter fields and the UAEPass Environment field are optional. Before selecting an environment, 
-the authenticator verifies that the UAEPass IsStaging feature enabled. If not, the authenticator
+#### If Staging Environment
+Before selecting an environment, the authenticator verifies that the UAEPass IsStaging feature enabled. If not, the authenticator
 will check the client  id. If the client id is equal to `sandbox stage`, the authenticator would pick 
 _**Staging**_ as the environment. And the endpoints will be selected accordingly. However, IsStaging feature is an 
 optional filed.
 
-According to the UAEPass documentation, openid scope was not mentioned. However, UAEPass still supports access to this 
-`openid` scope. Perhaps in the future it will no longer exist. Thus, the UAEPass Authenticator was designed to extract 
-user claims without an id token.
-
-IS will map the claims as usual if the token response contains an id token. Other-vice authenticator would create an API 
-request to UAEPass user info endpoint, and it may observe the claims.
-
+#### If Logout is Enabled
 UAEPass IdP only supports the commonAUth logout. Hence, logout redirection will be correlated by state parameter and 
 logout response. Hence, the new Authenticator introduced in passing the state parameter as a query string to the logout 
 redirect URI. With the modified features, the commonAuth logout can be managed, and commonAuthLogout will be redirected 
