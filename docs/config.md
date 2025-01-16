@@ -28,16 +28,9 @@ UAEPassPRODAuthzEndpoint = "https://id.uaepass.ae/idshub/authorize"
 UAEPassPRODUserInfoEndpoint = "https://id.uaepass.ae/idshub/userinfo"
 UAEPassPRODTokenEndpoint = "https://id.uaepass.ae/idshub/token"
 UAEPassPRODLogoutEndpoint = "https://id.uaepass.ae/idshub/logout"
-
 ```
 The [documentation](https://docs.uaepass.ae/guides/authentication/web-application/endpoints) for the UAEPass include information regarding above endpoints.
 
-To enable error redirection to a custom error page (available in v1.1.3 or later), add the following to the `deployment.toml` file.
-
-```toml
-[[authentication.custom_authenticator]]
-UAEPassAuthenticationEndpointErrorPage = "authenticationendpoint/uaePassError.jsp"
-```
 ## Configuring UAEPass in the WSO2 IS Console
 
 ### Identity Server 7.0.0 and later
@@ -103,6 +96,28 @@ UAEPass IdP only supports the commonAUth logout. Hence, logout redirection will 
 logout response. Hence, the new Authenticator introduced in passing the state parameter as a query string to the logout 
 redirect URI. With the modified features, the commonAuth logout can be managed, and commonAuthLogout will be redirected 
 back to the application.
+
+## Enable error page redirection (v1.1.3 or later)
+
+1. Download the [uaePassError.jsp](../components/uaepass-authenticator/src/webapp/uaePassError.jsp) file and copy it to the `<IS_HOME>/repository/deployment/server/webapps/authenticationendpoint` directory.
+2. Add the following to the `deployment.toml` file alongside with other configs.
+
+```toml
+[[authentication.custom_authenticator]]
+UAEPassAuthenticationEndpointErrorPage = "authenticationendpoint/uaePassError.jsp"
+```
+
+
+3. Append the below content to the `Resource.properties` file [1].
+If you are using the other language properties, It is required to add the translated content of the below configurations to those files as well(Eg : Resources_fr_FR.properties file).
+
+```aidl
+# UAE Pass
+error.uaepass.title=Failed Authentication with UAE Pass
+error.uaepass.cancelled=Authentication cancelled by the user.
+```
+
+[1]<IS_HOME>/repository/deployment/server/webapps/authenticationendpoint/WEB-INF/classes/org/wso2/carbon/identity/application/authentication/endpoint/i18n/Resources.properties
 
 ### _The UAEPass authenticator's flow as follows_
 ![alt text](images/UAEPassAuthenticatorDemoFlow.png)
