@@ -72,7 +72,6 @@ Defines the redirect path after successful authentication is completed from the 
 #### Additional Query Parameters
 Allows you to include static or dynamic query parameters for the UAEPass authorization request.
 
-**Note:**
 According to the UAEPass Staging documentation, they have specified acr values for third-party SPs and provided default 
 scopes. These acr values and scopes are carried along with the authorize request as the query parameters. The following
 are the default acr values and scope.
@@ -82,14 +81,10 @@ acr_values: urn:safelayer:tws:policies:authentication:level:low
 scope: urn:uae:digitalid:profile:general
 ```
 
-If the user specifies an additional acr value or scope value in the Additional query parameter section, the default 
-values will be overridden.
-
 #### If Staging Environment
 Before selecting an environment, the authenticator verifies that the UAEPass IsStaging feature enabled. If not, the authenticator
 will check the client  id. If the client id is equal to `sandbox stage`, the authenticator would pick 
-_**Staging**_ as the environment. And the endpoints will be selected accordingly. However, IsStaging feature is an 
-optional filed.
+_**Staging**_ as the environment. And the endpoints will be selected accordingly.
 
 #### If Logout is Enabled
 UAEPass IdP only supports the commonAUth logout. Hence, logout redirection will be correlated by state parameter and 
@@ -97,20 +92,26 @@ logout response. Hence, the new Authenticator introduced in passing the state pa
 redirect URI. With the modified features, the commonAuth logout can be managed, and commonAuthLogout will be redirected 
 back to the application.
 
+### Note
+
+According to the UAEPass documentation, openid scope was not mentioned. However, UAEPass still supports access to this
+openid scope. Perhaps in the future it will no longer exist. Thus, the UAEPass Authenticator was designed to extract
+user claims without an id token.
+
+IS will map the claims as usual if the token response contains an id token. Other-vice authenticator would create an
+API request to UAEPass user info endpoint, and it may observe the claims.
+
 ## Enable error page redirection (v1.1.3 or later)
 
 1. Download the [uaePassError.jsp](../components/uaepass-authenticator/src/webapp/uaePassError.jsp) file and copy it to the `<IS_HOME>/repository/deployment/server/webapps/authenticationendpoint` directory.
 2. Add the following to the `deployment.toml` file alongside with other configs.
-
 ```toml
 [[authentication.custom_authenticator]]
 UAEPassAuthenticationEndpointErrorPage = "authenticationendpoint/uaePassError.jsp"
 ```
 
-
 3. Append the below content to the `Resource.properties` file [1].
 If you are using the other language properties, It is required to add the translated content of the below configurations to those files as well(Eg : Resources_fr_FR.properties file).
-
 ```aidl
 # UAE Pass
 error.uaepass.title=Failed Authentication with UAE Pass
