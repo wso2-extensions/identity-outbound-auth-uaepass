@@ -3,7 +3,7 @@
     "owner": "WSO2",
     "category": "Federated authenticator",
     "documentationUrl": "https://github.com/wso2-extensions/identity-outbound-auth-uaepass/tree/main/docs",
-    "description": "",
+    "description": "UAEPass Authenticator is an outbound OIDC federated authentication connector designed to integrate with the UAEPass Identity Provider.",
     "status": "Active",
     "labels": [
         "federated",
